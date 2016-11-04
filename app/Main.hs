@@ -1,7 +1,8 @@
 module Main where
 
-import Prelude hiding (any)
-import Control.Arrow ((***), (&&&))
+import Prelude hiding (all, any, and, not, or, (&&), (||))
+import Control.Arrow ((***))
+-- import Control.Monad
 import Control.Monad.State (MonadState)
 import Data.Array
 import Data.Char (isDigit, ord)
@@ -12,7 +13,10 @@ import Data.Traversable (sequence)
 import Ersatz
 
 main :: IO ()
-main = undefined
+main = do
+  (Satisfied, Just solution) <- minisat `solveWith` (slitherlink sample)
+  print solution
+  return ()
 
 
 sample :: [String]
@@ -55,33 +59,42 @@ defineVariables p = sequence $ Map.fromList [(line, exists) | line <- vLines ++ 
 hints :: Problem -> [(Cell, Int)]
 hints p = map (id *** charToInt) $ filter (isDigit.snd) $ zip cells $ concat p
   where
-    (row, col) = (length problem, maximum $ map length problem)
+    (row, col) = (length p, maximum $ map length p)
     cellRange = ((0,0),(row-1,col-1))
     cells = range cellRange
     charToInt ch = ord ch - ord '0'
     
-validWith :: Boolean a => Map Line a -> Hint -> a
-validWith = undefined
-  where
+validWith :: Boolean a => Map Line a -> [(Cell, Int)] -> a
+validWith p hs = and $ map (validAssignment p) hs
 
-slitherlink :: (MonadState s m, HasSAT s) => Problem -> m (Map Line Bit)
+slitherlink :: (HasSAT s, MonadState s m) => Problem -> m (Map Line Bit)
 slitherlink p = do
   v <- defineVariables p
   let hint = hints p
-  assert (v `validWith` hint)
+  assert $ v `validWith` hint
   return v
 
-roundedBy :: Int -> (Bit, Bit, Bit, Bit) -> Bit
-roundedBy n (a,b,c,d) = any (===(Bit4 a b c d)) $ toBit4s n
-
-toBit4s :: Int -> [Bit4]
-toBit4s n = maybe [] id $ lookup n $ map (id &&& conv) [0..3]
+validAssignment :: Boolean a => Map Line a -> ((Row, Col), Int) -> a
+validAssignment p ((x,y), n) = n `roundedBy` (a, b, c, d)
   where
-    conv :: Int -> [Bit4]
-    conv = map bit4 . bin
-    bin :: Int -> [(Int, Int, Int, Int)]
-    bin i = [(a,b,c,d)| a<-[0,1], b<-[0,1], c<-[0,1], d<-[0,1], a+b+c+d == i]
-    bit4 :: (Int, Int, Int, Int) -> Bit4
-    bit4 (a,b,c,d) = Bit4 (toBit a) (toBit b) (toBit c) (toBit d)
-    toBit :: Int -> Bit
-    toBit = encode . toEnum
+    vl, vr, hu, hl :: Line
+    (vl,vr,hu,hl) = (((x,y),(x+1,y)), ((x,y+1),(x+1,y+1)), ((x,y),(x,y+1)), ((x+1,y),(x+1,y+1)))
+    (Just a, Just b, Just c, Just d)
+      = (Map.lookup vl p, Map.lookup vr p, Map.lookup hu p, Map.lookup hl p)
+
+roundedBy :: Boolean a => Int -> (a, a, a, a) -> a
+roundedBy n (a,b,c,d) | n == 0 = nor [a,b,c,d]
+                      | n == 1 = a && nor [b,c,d] ||
+                                 b && nor [c,d,a] ||
+                                 c && nor [d,a,b] ||
+                                 d && nor [a,b,c]
+                      | n == 2 = and [a,b] && nor [c,d] ||
+                                 and [a,c] && nor [b,d] ||
+                                 and [a,d] && nor [b,c] ||
+                                 and [b,c] && nor [a,d] ||
+                                 and [b,d] && nor [a,c] ||
+                                 and [c,d] && nor [a,b]
+                      | n == 3 = not a && and [b,c,d] ||
+                                 not b && and [c,d,a] ||
+                                 not c && and [d,a,b] ||
+                                 not d && and [a,b,c]
