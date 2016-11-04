@@ -23,21 +23,68 @@ showBoard :: Problem -> Map Line Bool -> IO ()
 showBoard p sol = do
   forM_ (range (0,row-1)) $ \r -> do
     forM_ (range (0,col-1)) $ \c -> do
+      putChar' $ cross sol (r,c)
       let (Just b) = Map.lookup ((r,c),(r,c+1)) sol
-      putStr $ if b then "+-" else "+ "
-    putStrLn "+"
+      putChar $ if b then '─' else ' '
+    putChar' $ cross sol (r, col)
+    putChar '\n'
     forM_ (range (0,col-1)) $ \c -> do
       let (Just b) = Map.lookup ((r,c),(r+1,c)) sol
-      putStr $ if b then "|" else " "
+      putChar $ if b then '│' else ' '
       putChar $ p !! r !! c
     let (Just b) = Map.lookup ((r,col),(r+1,col)) sol
-    putStrLn $ if b then "|" else " "
+    putChar $ if b then '│' else ' '
+    putChar '\n'
   forM_ (range (0,col-1)) $ \c -> do
+    putChar' $ cross sol (row, c)
     let (Just b) = Map.lookup ((row,c),(row,c+1)) sol
-    putStr $ if b then "+-" else "+ "
-  putStrLn "+"
+    putChar $ if b then '─' else ' '
+  putChar' $ cross sol (row, col)
+  putChar '\n'
   where
     (row, col) = (length p, maximum $ map length p)
+    putChar' ( Just n,  Just e,  Just s,  Just w) -- c
+      | n && e = putChar '└'
+      | n && s = putChar '│'
+      | n && w = putChar '┘'
+      | e && s = putChar '┌'
+      | e && w = putChar '─'
+      | s && w = putChar '┐'
+      | otherwise = putChar ' '
+    putChar' ( Nothing, Just e,  Just s, Nothing) -- lu
+      | e && s = putChar '┌'
+      | otherwise = putChar ' '
+    putChar' ( Nothing, Just e,  Just s,  Just w) -- u
+      | e && s = putChar '┌'
+      | e && w = putChar '─'
+      | s && w = putChar '┐'
+      | otherwise = putChar ' '
+    putChar' ( Nothing, Nothing, Just s,  Just w) -- ru
+      | s && w = putChar '┐'
+      | otherwise = putChar ' '
+    putChar' ( Just n,  Just e,  Just s, Nothing) -- l
+      | n && e = putChar '└'
+      | n && s = putChar '│'
+      | e && s = putChar '┌'
+      | otherwise = putChar ' '
+    putChar' ( Just n, Nothing,  Just s,  Just w) -- r
+      | n && s = putChar '│'
+      | n && w = putChar '┘'
+      | s && w = putChar '┐'
+      | otherwise = putChar ' '
+    putChar' ( Just n,  Just e, Nothing, Nothing) -- ld
+      | n && e = putChar '└'
+      | otherwise = putChar ' '
+    putChar' ( Just n,  Just e, Nothing,  Just w) -- d
+      | n && e = putChar '└'
+      | n && w = putChar '┘'
+      | e && w = putChar '─'
+      | otherwise = putChar ' '
+    putChar' ( Just n, Nothing, Nothing,  Just w) -- rd
+      | n && w = putChar '┘'
+      | otherwise = putChar ' '
+    putChar' (Nothing, Nothing, Nothing, Nothing) -- rd
+      = putChar ' '
 
 sample :: [String]
 sample = [ "3  21 3"
@@ -119,6 +166,15 @@ trueCountEq :: Boolean a => Int -> [a] -> a
 trueCountEq 0 xs = nor xs
 trueCountEq _ [] = false
 trueCountEq n (x:xs) = (x && trueCountEq (n-1) xs) || (not x && trueCountEq n xs)
+
+cross :: Boolean a => Map Line a -> Point -> (Maybe a, Maybe a, Maybe a, Maybe a)
+cross p (r,c) = (north, east, south, west)
+  where
+    north = Map.lookup ((r-1,c), (r,c)) p
+    west  = Map.lookup ((r,c-1), (r,c)) p
+    south = Map.lookup ((r,c), (r+1,c)) p
+    east  = Map.lookup ((r,c), (r,c+1)) p
+
 
 connectable :: Line -> ([Line], [Line])
 connectable l@(p1@(r1, c1), p2@(r2, c2))
