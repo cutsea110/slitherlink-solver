@@ -53,7 +53,7 @@ showBoard p sol = do
       | otherwise = putChar ' '
     putChar' ( Nothing, Just e,  Just s, Nothing) -- lu
       | e && s = putChar '┌'
-      | otherwise = putChar ' '
+      | otherwise = putChar '+'
     putChar' ( Nothing, Just e,  Just s,  Just w) -- u
       | e && s = putChar '┌'
       | e && w = putChar '─'
@@ -61,7 +61,7 @@ showBoard p sol = do
       | otherwise = putChar ' '
     putChar' ( Nothing, Nothing, Just s,  Just w) -- ru
       | s && w = putChar '┐'
-      | otherwise = putChar ' '
+      | otherwise = putChar '+'
     putChar' ( Just n,  Just e,  Just s, Nothing) -- l
       | n && e = putChar '└'
       | n && s = putChar '│'
@@ -74,7 +74,7 @@ showBoard p sol = do
       | otherwise = putChar ' '
     putChar' ( Just n,  Just e, Nothing, Nothing) -- ld
       | n && e = putChar '└'
-      | otherwise = putChar ' '
+      | otherwise = putChar '+'
     putChar' ( Just n,  Just e, Nothing,  Just w) -- d
       | n && e = putChar '└'
       | n && w = putChar '┘'
@@ -82,10 +82,14 @@ showBoard p sol = do
       | otherwise = putChar ' '
     putChar' ( Just n, Nothing, Nothing,  Just w) -- rd
       | n && w = putChar '┘'
-      | otherwise = putChar ' '
+      | otherwise = putChar '+'
     putChar' (Nothing, Nothing, Nothing, Nothing) -- rd
       = putChar ' '
 
+triv :: [String]
+triv = [ "  "
+       , " 4"
+       ]
 sample :: [String]
 sample = [ "3  21 3"
          , "  3    "
