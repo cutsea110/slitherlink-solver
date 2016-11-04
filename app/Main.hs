@@ -37,10 +37,6 @@ showBoard p sol = do
   putStrLn "+"
   where
     (row, col) = (length p, maximum $ map length p)
-    
---    top     = bar "┌" "───────" "┬" "┐"
---    divider = bar "├" "───────" "┼" "┤"
---    bottom  = bar "└" "───────" "┴" "┘"
 
 sample :: [String]
 sample = [ "3  21 3"
@@ -95,6 +91,7 @@ slitherlink p = do
   v <- defineVariables p
   let hint = hints p
   assert $ v `validWith` hint
+--  assert $ cyclic v
   return v
 
 validAssignment :: Boolean a => Map Line a -> ((Row, Col), Int) -> a
@@ -105,6 +102,32 @@ validAssignment p ((x,y), n) = n `roundedBy` (a, b, c, d)
     (Just a, Just b, Just c, Just d)
       = (Map.lookup vl p, Map.lookup vr p, Map.lookup hu p, Map.lookup hl p)
 
+legalConnect :: Boolean a => Line -> Map Line a -> a
+legalConnect l p = l `isActiveOn` p ==> (singleton p1s && singleton p2s)
+  where
+    p1s, p2s :: [Line]
+    (p1s, p2s) = connectable l
+    isActiveOn :: Boolean a => Line -> Map Line a -> a
+    isActiveOn x = maybe false id . Map.lookup x
+    singleton xs = trueCountEq 1 (map (`isActiveOn` p) xs)
+
+
+trueCountEq :: Boolean a => Int -> [a] -> a
+trueCountEq 0 xs = nor xs
+trueCountEq _ [] = false
+trueCountEq n (x:xs) = (x && trueCountEq (n-1) xs) || (not x && trueCountEq n xs)
+
+connectable :: Line -> ([Line], [Line])
+connectable l@(p1@(r1, c1), p2@(r2, c2))
+  | r1 == r2 = (map ($ p1) [north, west, south], map ($ p2) [north, east, south])
+  | c1 == c2 = (map ($ p1) [west, north, east], map ($ p2) [west, south, east])
+  | otherwise = error $ "illegal line: " ++ show l
+  where
+    north (r,c) = ((r-1,c), (r,c))
+    west  (r,c) = ((r,c-1), (r,c))
+    south (r,c) = ((r,c), (r+1,c))
+    east  (r,c) = ((r,c), (r,c+1))
+    
 roundedBy :: Boolean a => Int -> (a, a, a, a) -> a
 roundedBy n (a,b,c,d) | n == 0 = nor [a,b,c,d]
                       | n == 1 = a && nor [b,c,d] ||
