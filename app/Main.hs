@@ -13,11 +13,14 @@ import Data.Traversable (sequence)
 import Ersatz
 
 main :: IO ()
-main = do
-  let p = problem
+main = runSlitherlink sample
+
+runSlitherlink :: Problem -> IO ()
+runSlitherlink p = do
   (Satisfied, Just solution) <- minisat `solveWith` (slitherlink p)
   showBoard p solution
   return ()
+  
 
 showBoard :: Problem -> Map Line Bool -> IO ()
 showBoard p sol = do
