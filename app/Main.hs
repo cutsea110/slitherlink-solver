@@ -203,4 +203,5 @@ roundedBy n (a,b,c,d) | n == 0 = nor [a,b,c,d]
                                  not b && and [c,d,a] ||
                                  not c && and [d,a,b] ||
                                  not d && and [a,b,c]
+                      | n == 4 = and [a,b,c,d]
                       | otherwise = error $ "illegal hint: " ++ show n
