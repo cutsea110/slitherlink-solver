@@ -14,8 +14,9 @@ import Ersatz
 
 main :: IO ()
 main = do
-  (Satisfied, Just solution) <- minisat `solveWith` (slitherlink sample)
-  showBoard sample solution
+  let p = problem
+  (Satisfied, Just solution) <- minisat `solveWith` (slitherlink p)
+  showBoard p solution
   return ()
 
 showBoard :: Problem -> Map Line Bool -> IO ()
@@ -91,7 +92,7 @@ slitherlink p = do
   v <- defineVariables p
   let hint = hints p
   assert $ v `validWith` hint
---  assert $ cyclic v
+  assert $ cyclic v
   return v
 
 validAssignment :: Boolean a => Map Line a -> ((Row, Col), Int) -> a
@@ -102,6 +103,9 @@ validAssignment p ((x,y), n) = n `roundedBy` (a, b, c, d)
     (Just a, Just b, Just c, Just d)
       = (Map.lookup vl p, Map.lookup vr p, Map.lookup hu p, Map.lookup hl p)
 
+cyclic :: Boolean a => Map Line a -> a
+cyclic p = foldr (\k b -> legalConnect k p && b) true (Map.keys p)
+
 legalConnect :: Boolean a => Line -> Map Line a -> a
 legalConnect l p = l `isActiveOn` p ==> (singleton p1s && singleton p2s)
   where
@@ -110,7 +114,6 @@ legalConnect l p = l `isActiveOn` p ==> (singleton p1s && singleton p2s)
     isActiveOn :: Boolean a => Line -> Map Line a -> a
     isActiveOn x = maybe false id . Map.lookup x
     singleton xs = trueCountEq 1 (map (`isActiveOn` p) xs)
-
 
 trueCountEq :: Boolean a => Int -> [a] -> a
 trueCountEq 0 xs = nor xs
