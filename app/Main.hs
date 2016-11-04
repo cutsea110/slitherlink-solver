@@ -2,7 +2,7 @@ module Main where
 
 import Prelude hiding (all, any, and, not, or, (&&), (||))
 import Control.Arrow ((***))
--- import Control.Monad
+import Control.Monad (forM_)
 import Control.Monad.State (MonadState)
 import Data.Array
 import Data.Char (isDigit, ord)
@@ -15,9 +15,32 @@ import Ersatz
 main :: IO ()
 main = do
   (Satisfied, Just solution) <- minisat `solveWith` (slitherlink sample)
-  print solution
+  showBoard sample solution
   return ()
 
+showBoard :: Problem -> Map Line Bool -> IO ()
+showBoard p sol = do
+  forM_ (range (0,row-1)) $ \r -> do
+    forM_ (range (0,col-1)) $ \c -> do
+      let (Just b) = Map.lookup ((r,c),(r,c+1)) sol
+      putStr $ if b then "+-" else "+ "
+    putStrLn "+"
+    forM_ (range (0,col-1)) $ \c -> do
+      let (Just b) = Map.lookup ((r,c),(r+1,c)) sol
+      putStr $ if b then "|" else " "
+      putChar $ p !! r !! c
+    let (Just b) = Map.lookup ((r,col),(r+1,col)) sol
+    putStrLn $ if b then "|" else " "
+  forM_ (range (0,col-1)) $ \c -> do
+    let (Just b) = Map.lookup ((row,c),(row,c+1)) sol
+    putStr $ if b then "+-" else "+ "
+  putStrLn "+"
+  where
+    (row, col) = (length p, maximum $ map length p)
+    
+--    top     = bar "┌" "───────" "┬" "┐"
+--    divider = bar "├" "───────" "┼" "┤"
+--    bottom  = bar "└" "───────" "┴" "┘"
 
 sample :: [String]
 sample = [ "3  21 3"
@@ -63,7 +86,7 @@ hints p = map (id *** charToInt) $ filter (isDigit.snd) $ zip cells $ concat p
     cellRange = ((0,0),(row-1,col-1))
     cells = range cellRange
     charToInt ch = ord ch - ord '0'
-    
+
 validWith :: Boolean a => Map Line a -> [(Cell, Int)] -> a
 validWith p hs = and $ map (validAssignment p) hs
 
@@ -98,3 +121,4 @@ roundedBy n (a,b,c,d) | n == 0 = nor [a,b,c,d]
                                  not b && and [c,d,a] ||
                                  not c && and [d,a,b] ||
                                  not d && and [a,b,c]
+                      | otherwise = error $ "illegal hint: " ++ show n
