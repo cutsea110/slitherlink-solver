@@ -195,20 +195,4 @@ connectable l@(p1@(r1, c1), p2@(r2, c2))
     east  (r,c) = ((r,c), (r,c+1))
     
 roundedBy :: Boolean a => Int -> (a, a, a, a) -> a
-roundedBy n (a,b,c,d) | n == 0 = nor [a,b,c,d]
-                      | n == 1 = a && nor [b,c,d] ||
-                                 b && nor [c,d,a] ||
-                                 c && nor [d,a,b] ||
-                                 d && nor [a,b,c]
-                      | n == 2 = and [a,b] && nor [c,d] ||
-                                 and [a,c] && nor [b,d] ||
-                                 and [a,d] && nor [b,c] ||
-                                 and [b,c] && nor [a,d] ||
-                                 and [b,d] && nor [a,c] ||
-                                 and [c,d] && nor [a,b]
-                      | n == 3 = not a && and [b,c,d] ||
-                                 not b && and [c,d,a] ||
-                                 not c && and [d,a,b] ||
-                                 not d && and [a,b,c]
-                      | n == 4 = and [a,b,c,d]
-                      | otherwise = error $ "illegal hint: " ++ show n
+roundedBy n (a,b,c,d) = trueCountEq n [a,b,c,d]
