@@ -3,7 +3,7 @@ module Main where
 import Prelude hiding (all, any, and, not, or, (&&), (||))
 import Control.Arrow ((***))
 import Control.Monad (forM_)
-import Control.Monad.State (MonadState)
+import Control.Monad.State (MonadState, runState)
 import Data.Array
 import Data.Char (isDigit, ord)
 import Data.Map (Map)
@@ -18,9 +18,20 @@ main = runSlitherlink sample
 runSlitherlink :: Problem -> IO ()
 runSlitherlink p = do
   (Satisfied, Just solution) <- minisat `solveWith` (slitherlink p)
-  showBoard p solution
+  showBoard p $ fst solution
+  paintBoard p $ snd solution
   return ()
-  
+
+paintBoard :: Problem -> Map Cell Bool -> IO ()
+paintBoard p cs = do
+  forM_ (range (0, row-1)) $ \r -> do
+    forM_ (range (0, col-1)) $ \c -> do
+      let Just b = Map.lookup (r,c) cs
+      putChar $ if b then 'x' else ' '
+    putChar '\n'
+  putChar '\n'
+  where
+    (row, col) = (length p, maximum $ map length p)
 
 showBoard :: Problem -> Map Line Bool -> IO ()
 showBoard p sol = do
@@ -123,7 +134,8 @@ type Line = (Point,Point)
 type Problem = [String]
 type Hint = [(Cell, Int)]
 
-defineVariables :: (Variable a, HasSAT s, MonadState s m) => Problem -> m ((Map Line a), (Map Cell a))
+defineVariables :: (Variable a, HasSAT s, MonadState s m) =>
+  Problem -> m ((Map Line a), (Map Cell a))
 defineVariables p = do
   lines <- sequence $ Map.fromList [(line, exists) | line <- vLines ++ hLines]
   cells <- sequence $ Map.fromList [(cell, exists) | cell <- range ((0,0),(row-1,col-1))]
@@ -144,13 +156,26 @@ hints p = map (id *** charToInt) $ filter (isDigit.snd) $ zip cells $ concat p
 validWith :: Boolean a => Map Line a -> [(Cell, Int)] -> a
 validWith p hs = and $ map (validAssignment p) hs
 
-slitherlink :: (HasSAT s, MonadState s m) => Problem -> m (Map Line Bit)
+slitherlink :: (HasSAT s, MonadState s m) =>
+  Problem -> m ((Map Line Bit), (Map Cell Bit))
 slitherlink p = do
-  (lines, _cells) <- defineVariables p
+  (lines, cells) <- defineVariables p
   let hint = hints p
   assert $ lines `validWith` hint
   assert $ cyclic lines
-  return lines
+  assert $ cells `paintedBy` lines
+  return (lines, cells)
+
+paintedBy :: (Boolean a, Equatable a) => Map Cell a -> Map Line a -> Bit
+cs `paintedBy` ls =  and $ map (\c -> legalPaint c (ls, cs)) (Map.keys cs)
+
+
+legalPaint :: (Boolean a, Equatable a) => Cell -> (Map Line a, Map Cell a) -> Bit
+legalPaint c@(x, y) (ls, cs) = here === (west `xor` left)
+  where
+    Just here = Map.lookup c cs
+    west = maybe false id $ Map.lookup (x, y-1) cs
+    Just left = Map.lookup ((x,y), (x+1,y)) ls
 
 validAssignment :: Boolean a => Map Line a -> ((Row, Col), Int) -> a
 validAssignment p ((x,y), n) = n `roundedBy` (a, b, c, d)
