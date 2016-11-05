@@ -123,8 +123,11 @@ type Line = (Point,Point)
 type Problem = [String]
 type Hint = [(Cell, Int)]
 
-defineVariables :: (Variable a, HasSAT s, MonadState s m) => Problem -> m (Map Line a)
-defineVariables p = sequence $ Map.fromList [(line, exists) | line <- vLines ++ hLines]
+defineVariables :: (Variable a, HasSAT s, MonadState s m) => Problem -> m ((Map Line a), (Map Cell a))
+defineVariables p = do
+  lines <- sequence $ Map.fromList [(line, exists) | line <- vLines ++ hLines]
+  cells <- sequence $ Map.fromList [(cell, exists) | cell <- range ((0,0),(row-1,col-1))]
+  return (lines, cells)
   where
     (row, col) = (length p, maximum $ map length p)
     vLines   = [((r, c), (r+1, c)) | r <- [0..row-1], c <- [0..col]]
@@ -143,11 +146,11 @@ validWith p hs = and $ map (validAssignment p) hs
 
 slitherlink :: (HasSAT s, MonadState s m) => Problem -> m (Map Line Bit)
 slitherlink p = do
-  v <- defineVariables p
+  (lines, _cells) <- defineVariables p
   let hint = hints p
-  assert $ v `validWith` hint
-  assert $ cyclic v
-  return v
+  assert $ lines `validWith` hint
+  assert $ cyclic lines
+  return lines
 
 validAssignment :: Boolean a => Map Line a -> ((Row, Col), Int) -> a
 validAssignment p ((x,y), n) = n `roundedBy` (a, b, c, d)
