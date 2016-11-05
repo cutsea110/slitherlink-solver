@@ -3,7 +3,7 @@ module Main where
 import Prelude hiding (all, any, and, not, or, (&&), (||))
 import Control.Arrow ((***))
 import Control.Monad (forM_)
-import Control.Monad.State (MonadState)
+import Control.Monad.State (MonadState, runState)
 import Data.Array
 import Data.Char (isDigit, ord)
 import Data.Map (Map)
@@ -18,9 +18,20 @@ main = runSlitherlink sample
 runSlitherlink :: Problem -> IO ()
 runSlitherlink p = do
   (Satisfied, Just solution) <- minisat `solveWith` (slitherlink p)
-  showBoard p solution
+  showBoard p $ fst solution
+  paintBoard p $ snd solution
   return ()
-  
+
+paintBoard :: Problem -> Map Cell Bool -> IO ()
+paintBoard p cs = do
+  forM_ (range (0, row-1)) $ \r -> do
+    forM_ (range (0, col-1)) $ \c -> do
+      let Just b = Map.lookup (r,c) cs
+      putChar $ if b then 'x' else ' '
+    putChar '\n'
+  putChar '\n'
+  where
+    (row, col) = (length p, maximum $ map length p)
 
 showBoard :: Problem -> Map Line Bool -> IO ()
 showBoard p sol = do
@@ -123,8 +134,12 @@ type Line = (Point,Point)
 type Problem = [String]
 type Hint = [(Cell, Int)]
 
-defineVariables :: (Variable a, HasSAT s, MonadState s m) => Problem -> m (Map Line a)
-defineVariables p = sequence $ Map.fromList [(line, exists) | line <- vLines ++ hLines]
+defineVariables :: (Variable a, HasSAT s, MonadState s m) =>
+  Problem -> m ((Map Line a), (Map Cell a))
+defineVariables p = do
+  lines <- sequence $ Map.fromList [(line, exists) | line <- vLines ++ hLines]
+  cells <- sequence $ Map.fromList [(cell, exists) | cell <- range ((0,0),(row-1,col-1))]
+  return (lines, cells)
   where
     (row, col) = (length p, maximum $ map length p)
     vLines   = [((r, c), (r+1, c)) | r <- [0..row-1], c <- [0..col]]
@@ -141,13 +156,26 @@ hints p = map (id *** charToInt) $ filter (isDigit.snd) $ zip cells $ concat p
 validWith :: Boolean a => Map Line a -> [(Cell, Int)] -> a
 validWith p hs = and $ map (validAssignment p) hs
 
-slitherlink :: (HasSAT s, MonadState s m) => Problem -> m (Map Line Bit)
+slitherlink :: (HasSAT s, MonadState s m) =>
+  Problem -> m ((Map Line Bit), (Map Cell Bit))
 slitherlink p = do
-  v <- defineVariables p
+  (lines, cells) <- defineVariables p
   let hint = hints p
-  assert $ v `validWith` hint
-  assert $ cyclic v
-  return v
+  assert $ lines `validWith` hint
+  assert $ cyclic lines
+  assert $ cells `paintedBy` lines
+  return (lines, cells)
+
+paintedBy :: (Boolean a, Equatable a) => Map Cell a -> Map Line a -> Bit
+cs `paintedBy` ls =  and $ map (\c -> legalPaint c (ls, cs)) (Map.keys cs)
+
+
+legalPaint :: (Boolean a, Equatable a) => Cell -> (Map Line a, Map Cell a) -> Bit
+legalPaint c@(x, y) (ls, cs) = here === (west `xor` left)
+  where
+    Just here = Map.lookup c cs
+    west = maybe false id $ Map.lookup (x, y-1) cs
+    Just left = Map.lookup ((x,y), (x+1,y)) ls
 
 validAssignment :: Boolean a => Map Line a -> ((Row, Col), Int) -> a
 validAssignment p ((x,y), n) = n `roundedBy` (a, b, c, d)
@@ -196,3 +224,21 @@ connectable l@(p1@(r1, c1), p2@(r2, c2))
     
 roundedBy :: Boolean a => Int -> (a, a, a, a) -> a
 roundedBy n (a,b,c,d) = trueCountEq n [a,b,c,d]
+
+-- Arithmetic
+
+full_adder :: Bit -> Bit -> Bit -> (Bit, Bit)
+full_adder a b cin = (s2, c1 || c2)
+  where
+    (s1, c1) = half_adder a b
+    (s2, c2) = half_adder s1 cin
+
+half_adder :: Bit -> Bit -> (Bit, Bit)
+half_adder a b = (a `xor` b, a && b)
+
+counting :: [Bit] -> [Bit] -> [Bit]
+counting = foldr add
+  where
+    add :: Bit -> [Bit] -> [Bit]
+    add x [] = [x]
+    add x (y:ys) = (x `xor` y):add (x && y) ys
