@@ -224,3 +224,21 @@ connectable l@(p1@(r1, c1), p2@(r2, c2))
     
 roundedBy :: Boolean a => Int -> (a, a, a, a) -> a
 roundedBy n (a,b,c,d) = trueCountEq n [a,b,c,d]
+
+-- Arithmetic
+
+full_adder :: Bit -> Bit -> Bit -> (Bit, Bit)
+full_adder a b cin = (s2, c1 || c2)
+  where
+    (s1, c1) = half_adder a b
+    (s2, c2) = half_adder s1 cin
+
+half_adder :: Bit -> Bit -> (Bit, Bit)
+half_adder a b = (a `xor` b, a && b)
+
+counting :: [Bit] -> [Bit] -> [Bit]
+counting = foldr add
+  where
+    add :: Bit -> [Bit] -> [Bit]
+    add x [] = [x]
+    add x (y:ys) = (x `xor` y):add (x && y) ys
