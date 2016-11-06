@@ -164,7 +164,24 @@ slitherlink p = do
   assert $ lines `validWith` hint
   assert $ cyclic lines
   assert $ cells `paintedBy` lines
+  assert $ singleIsland cells
   return (lines, cells)
+
+singleIsland :: Map Cell Bit -> Bit
+singleIsland cs = counting [false] cape === counting [true] bay
+  where
+--    cape, bay :: Boolean a => [a]
+    cape = foldr (\c bs -> isCape c:bs) [] $ Map.keys cs
+    bay = foldr (\c bs -> isBay c:bs) [] $ Map.keys cs
+    safe = maybe false id
+    isCape c@(x, y) = here && not (safe north) && not (safe west)
+      where
+        Just here = Map.lookup c cs
+        (north, west) = (Map.lookup (x-1,y) cs, Map.lookup (x,y-1) cs)
+    isBay c@(x, y) = not here && safe south && safe east
+      where
+        Just here = Map.lookup c cs
+        (south, east) = (Map.lookup (x+1,y) cs, Map.lookup (x,y+1) cs)
 
 paintedBy :: (Boolean a, Equatable a) => Map Cell a -> Map Line a -> Bit
 cs `paintedBy` ls =  and $ map (\c -> legalPaint c (ls, cs)) (Map.keys cs)
