@@ -24,27 +24,29 @@ runSlitherlink p = do
 showBoard :: Problem -> Map Line Bool -> IO ()
 showBoard p sol = do
   forM_ (range (0,row-1)) $ \r -> do
-    forM_ (range (0,col-1)) $ \c -> do
-      putChar' $ cross sol (r,c)
-      let (Just b) = Map.lookup ((r,c),(r,c+1)) sol
-      putChar $ if b then '─' else ' '
-    putChar' $ cross sol (r, col)
-    putChar '\n'
-    forM_ (range (0,col-1)) $ \c -> do
-      let (Just b) = Map.lookup ((r,c),(r+1,c)) sol
-      putChar $ if b then '│' else ' '
-      putChar $ p !! r !! c
-    let (Just b) = Map.lookup ((r,col),(r+1,col)) sol
-    putChar $ if b then '│' else ' '
-    putChar '\n'
-  forM_ (range (0,col-1)) $ \c -> do
-    putChar' $ cross sol (row, c)
-    let (Just b) = Map.lookup ((row,c),(row,c+1)) sol
-    putChar $ if b then '─' else ' '
-  putChar' $ cross sol (row, col)
-  putChar '\n'
+    putHorizontalLine r
+    putHorizontalArea r
+  putHorizontalLine row
   where
     (row, col) = (length p, maximum $ map length p)
+    putHorizontalLine :: Row -> IO ()
+    putHorizontalLine r = do
+      forM_ (range (0,col-1)) $ \c -> do
+        putChar' $ cross sol (r,c)
+        let (Just b) = Map.lookup ((r,c),(r,c+1)) sol
+        putChar $ if b then '─' else ' '
+      putChar' $ cross sol (r, col)
+      putChar '\n'
+    putHorizontalArea :: Row -> IO ()
+    putHorizontalArea r = do
+      forM_ (range (0,col-1)) $ \c -> do
+        let (Just b) = Map.lookup ((r,c),(r+1,c)) sol
+        putChar $ if b then '│' else ' '
+        putChar $ p !! r !! c
+      let (Just b) = Map.lookup ((r,col),(r+1,col)) sol
+      putChar $ if b then '│' else ' '
+      putChar '\n'
+      
     putChar' ( Just n,  Just e,  Just s,  Just w) -- c
       | n && e = putChar '└'
       | n && s = putChar '│'
