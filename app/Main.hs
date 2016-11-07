@@ -13,7 +13,7 @@ import Data.Traversable (sequence)
 import Ersatz
 
 main :: IO ()
-main = runSlitherlink problem3620
+main = runSlitherlink problem36x20
 
 runSlitherlink :: Problem -> IO ()
 runSlitherlink p = do
@@ -62,11 +62,11 @@ showBoard p sol = do
            | e && w = '─'
            | otherwise = ' '
 
-triv :: [String]
+triv :: Problem
 triv = [ "  "
        , " 4"
        ]
-sample :: [String]
+sample :: Problem
 sample = [ "3  21 3"
          , "  3    "
          , "1 3 23 "
@@ -76,7 +76,7 @@ sample = [ "3  21 3"
          , "0 13  3"
          ]
 
-problem :: [String]
+problem :: Problem
 problem = [ " 3 12  212  31 "
           , "3   3     1   0"
           , "  3   3  1  2  "
@@ -90,30 +90,44 @@ problem = [ " 3 12  212  31 "
 
 -- Slitherlink Puzzle
 -- http://www.nikoli.co.jp/en/puzzles/slitherlink/
+-- size 8 8
+problem8x8 :: Problem
+problem8x8=[ " 0 1  1 "
+           , " 3  23 2"
+           , "  0    0"
+           , " 3  0   "
+           , "   3  0 "
+           , "1    3  "
+           , "3 13  3 "
+           , " 0  3 3 "
+           ]
+             
+-- Slitherlink Puzzle
+-- http://www.nikoli.co.jp/en/puzzles/slitherlink/
 -- size 36 20
-problem3620 :: [String]
-problem3620 = [ "   3    0 122           21 01     20"
-              , " 303 01      3321  30 2             "
-              , " 3      2            3 3 3  3  3  23"
-              , " 3  3 0   0 3  33  3 2   01 3  0    "
-              , " 3 0   32 2 0    3     3    3   20 3"
-              , "    32 3  3 2  22   0   13 1  33  3 "
-              , "131        2 2      3 1    2    1 2 "
-              , "     3 2 0   3 2  3 2  3            "
-              , "  30 3  1 31  3   0    3 20 3 20  31"
-              , "2  3 2      3  2  3         0    0  "
-              , "  1    2         2  0  2      2 1  1"
-              , "32  03 2 33 2    1   2  22 3  0 33  "
-              , "            0  2 3  2 2   3 3 1     "
-              , " 3 2    3    3 2      0 2        320"
-              , " 3  21  3 01   0   21  2 3  0 22    "
-              , "2 03   1    3     2    1 0 12   3 2 "
-              , "    2  3 13   2 0  20  2 3   2 2  3 "
-              , "13  2  3  2 0 1            3      0 "
-              , "             3 33  2333      33 333 "
-              , "10     01 21           101 1    2   "
-              ]
-              
+problem36x20 :: [String]
+problem36x20 = [ "   3    0 122           21 01     20"
+               , " 303 01      3321  30 2             "
+               , " 3      2            3 3 3  3  3  23"
+               , " 3  3 0   0 3  33  3 2   01 3  0    "
+               , " 3 0   32 2 0    3     3    3   20 3"
+               , "    32 3  3 2  22   0   13 1  33  3 "
+               , "131        2 2      3 1    2    1 2 "
+               , "     3 2 0   3 2  3 2  3            "
+               , "  30 3  1 31  3   0    3 20 3 20  31"
+               , "2  3 2      3  2  3         0    0  "
+               , "  1    2         2  0  2      2 1  1"
+               , "32  03 2 33 2    1   2  22 3  0 33  "
+               , "            0  2 3  2 2   3 3 1     "
+               , " 3 2    3    3 2      0 2        320"
+               , " 3  21  3 01   0   21  2 3  0 22    "
+               , "2 03   1    3     2    1 0 12   3 2 "
+               , "    2  3 13   2 0  20  2 3   2 2  3 "
+               , "13  2  3  2 0 1            3      0 "
+               , "             3 33  2333      33 333 "
+               , "10     01 21           101 1    2   "
+               ]
+               
 type Row = Int
 type Col = Int
 type Point = (Row, Col)
