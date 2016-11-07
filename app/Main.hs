@@ -19,7 +19,18 @@ runSlitherlink :: Problem -> IO ()
 runSlitherlink p = do
   (Satisfied, Just solution) <- minisat `solveWith` (slitherlink p)
   showBoard p $ fst solution
+  paintBoard p $ snd solution
   return ()
+
+paintBoard :: Problem -> Map Cell Bool -> IO ()
+paintBoard p cs = do
+  forM_ (range (0,row-1)) $ \r -> do
+    forM_ (range (0,col-1)) $ \c -> do
+      let Just b = Map.lookup (r,c) cs
+      putChar $ if b then 'X' else ' '
+    putStrLn "+"
+    where
+      (row, col) = (length p, maximum $ map length p)
 
 showBoard :: Problem -> Map Line Bool -> IO ()
 showBoard p sol = do
@@ -169,11 +180,11 @@ slitherlink p = do
   return (ls, cs)
 
 singleIsland :: Map Cell Bit -> Bit
-singleIsland cs = cape === bay
+singleIsland cs = cape === bayPlus1
   where
     count p base = sumBit (base:(map p $ Map.keys cs))
     cape = count (fst.isCapeBay) false
-    bay = count (snd.isCapeBay) true
+    bayPlus1 = count (snd.isCapeBay) true
     isCapeBay c@(x, y) = (here && not north && not west, not here && south && east)
       where
         safe = maybe false id
@@ -181,15 +192,20 @@ singleIsland cs = cape === bay
         (north, west) = (safe *** safe) (Map.lookup (x-1,y) cs, Map.lookup (x,y-1) cs)
         (south, east) = (safe *** safe) (Map.lookup (x+1,y) cs, Map.lookup (x,y+1) cs)
 
-divideBy :: (Boolean a, Equatable a) => Map Cell a -> Map Line a -> Bit
+-- divideBy :: (Boolean a, Equatable a) => Map Cell a -> Map Line a -> Bit
 cs `divideBy` ls =  and $ map (`isIslandOrOcean` (ls, cs)) (Map.keys cs)
 
-isIslandOrOcean :: (Boolean a, Equatable a) => Cell -> (Map Line a, Map Cell a) -> Bit
+-- isIslandOrOcean :: (Boolean a, Equatable a) => Cell -> (Map Line a, Map Cell a) -> Bit
 c@(x, y) `isIslandOrOcean` (ls, cs) = here === (west `xor` left)
   where
     Just here = Map.lookup c cs
-    west = maybe false id $ Map.lookup (x, y-1) cs
-    Just left = Map.lookup ((x,y), (x+1,y)) ls
+    safe = maybe false id
+    (north, west) = (safe *** safe) (Map.lookup (x-1,y) cs, Map.lookup (x,y-1) cs)
+    (south, east) = (safe *** safe) (Map.lookup (x+1,y) cs, Map.lookup (x,y+1) cs)
+    Just above = Map.lookup ((x,y), (x,y+1)) ls
+    Just right = Map.lookup ((x,y+1), (x+1,y+1)) ls
+    Just below = Map.lookup ((x+1,y), (x+1,y+1)) ls
+    Just left  = Map.lookup ((x,y), (x+1,y)) ls
 
 validAssignment :: Boolean a => Map Line a -> ((Row, Col), Int) -> a
 validAssignment p ((x,y), n) = n `roundedBy` (a, b, c, d)
