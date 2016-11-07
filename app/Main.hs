@@ -230,7 +230,6 @@ cross p (r,c) = (safe north, safe east, safe south, safe west)
     south = Map.lookup ((r,c), (r+1,c)) p
     east  = Map.lookup ((r,c), (r,c+1)) p
 
-
 connectable :: Line -> ([Line], [Line])
 connectable l@(p1@(r1, c1), p2@(r2, c2))
   | r1 == r2 = (map ($ p1) [north, west, south], map ($ p2) [north, east, south])
@@ -246,6 +245,15 @@ roundedBy :: Boolean a => Int -> (a, a, a, a) -> a
 roundedBy n (a,b,c,d) = trueCountEq n [a,b,c,d]
 
 -- Arithmetic
+halfAddr :: Boolean a => a -> a -> (a, a)
+halfAddr x y = (x `xor` y, x && y)
+
+fullAddr :: Boolean a => a -> a -> a -> (a, a)
+fullAddr x y cin = (s2, c1 || c2)
+  where
+    (s1, c1) = halfAddr x y
+    (s2, c2) = halfAddr s1 cin
+
 add :: Bit -> [Bit] -> [Bit]
 add x [] = [x]
 add x (y:ys) = (x `xor` y):add (x && y) ys
