@@ -240,7 +240,7 @@ connectable l@(p1@(r1, c1), p2@(r2, c2))
     west  (r,c) = ((r,c-1), (r,c))
     south (r,c) = ((r,c), (r+1,c))
     east  (r,c) = ((r,c), (r,c+1))
-    
+
 roundedBy :: Boolean a => Int -> (a, a, a, a) -> a
 roundedBy n (a,b,c,d) = trueCountEq n [a,b,c,d]
 
