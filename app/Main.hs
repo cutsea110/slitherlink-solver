@@ -3,7 +3,7 @@ module Main where
 import Prelude hiding (all, any, and, not, or, (&&), (||))
 import Control.Arrow ((***))
 import Control.Monad (forM_)
-import Control.Monad.State (MonadState, runState)
+import Control.Monad.State (MonadState)
 import Data.Array
 import Data.Char (isDigit, ord)
 import Data.Map (Map)
@@ -19,19 +19,7 @@ runSlitherlink :: Problem -> IO ()
 runSlitherlink p = do
   (Satisfied, Just solution) <- minisat `solveWith` (slitherlink p)
   showBoard p $ fst solution
-  paintBoard p $ snd solution
   return ()
-
-paintBoard :: Problem -> Map Cell Bool -> IO ()
-paintBoard p cs = do
-  forM_ (range (0, row-1)) $ \r -> do
-    forM_ (range (0, col-1)) $ \c -> do
-      let Just b = Map.lookup (r,c) cs
-      putChar $ if b then 'x' else ' '
-    putChar '\n'
-  putChar '\n'
-  where
-    (row, col) = (length p, maximum $ map length p)
 
 showBoard :: Problem -> Map Line Bool -> IO ()
 showBoard p sol = do
@@ -162,17 +150,19 @@ slitherlink p = do
   (lines, cells) <- defineVariables p
   let hint = hints p
   assert $ lines `validWith` hint
-  assert $ cyclic lines
-  assert $ cells `paintedBy` lines
+  assert $ formIsland lines
+  assert $ cells `divideBy` lines
   assert $ singleIsland cells
   return (lines, cells)
 
 singleIsland :: Map Cell Bit -> Bit
-singleIsland cs = counting [false] cape === counting [true] bay
+singleIsland cs = cape === bay
   where
---    cape, bay :: Boolean a => [a]
-    cape = foldr (\c bs -> isCape c:bs) [] $ Map.keys cs
-    bay = foldr (\c bs -> isBay c:bs) [] $ Map.keys cs
+    count :: (Cell -> Bit) -> [Bit] -> [Bit]
+    count p base = foldr (\c bs -> p c `add` bs) base $ Map.keys cs
+    cape, bay :: [Bit]
+    cape = count isCape [false]
+    bay = count isBay [true]
     safe = maybe false id
     isCape c@(x, y) = here && not (safe north) && not (safe west)
       where
@@ -183,12 +173,11 @@ singleIsland cs = counting [false] cape === counting [true] bay
         Just here = Map.lookup c cs
         (south, east) = (Map.lookup (x+1,y) cs, Map.lookup (x,y+1) cs)
 
-paintedBy :: (Boolean a, Equatable a) => Map Cell a -> Map Line a -> Bit
-cs `paintedBy` ls =  and $ map (\c -> legalPaint c (ls, cs)) (Map.keys cs)
+divideBy :: (Boolean a, Equatable a) => Map Cell a -> Map Line a -> Bit
+cs `divideBy` ls =  and $ map (`isIslandOrOcean` (ls, cs)) (Map.keys cs)
 
-
-legalPaint :: (Boolean a, Equatable a) => Cell -> (Map Line a, Map Cell a) -> Bit
-legalPaint c@(x, y) (ls, cs) = here === (west `xor` left)
+isIslandOrOcean :: (Boolean a, Equatable a) => Cell -> (Map Line a, Map Cell a) -> Bit
+c@(x, y) `isIslandOrOcean` (ls, cs) = here === (west `xor` left)
   where
     Just here = Map.lookup c cs
     west = maybe false id $ Map.lookup (x, y-1) cs
@@ -202,8 +191,8 @@ validAssignment p ((x,y), n) = n `roundedBy` (a, b, c, d)
     (Just a, Just b, Just c, Just d)
       = (Map.lookup vl p, Map.lookup vr p, Map.lookup hu p, Map.lookup hl p)
 
-cyclic :: Boolean a => Map Line a -> a
-cyclic p = foldr (\k b -> legalConnect k p && b) true (Map.keys p)
+formIsland :: Boolean a => Map Line a -> a
+formIsland p = foldr (\k b -> legalConnect k p && b) true (Map.keys p)
 
 legalConnect :: Boolean a => Line -> Map Line a -> a
 legalConnect l p = l `isActiveOn` p ==> (singleton p1s && singleton p2s)
@@ -243,19 +232,6 @@ roundedBy :: Boolean a => Int -> (a, a, a, a) -> a
 roundedBy n (a,b,c,d) = trueCountEq n [a,b,c,d]
 
 -- Arithmetic
-
-full_adder :: Bit -> Bit -> Bit -> (Bit, Bit)
-full_adder a b cin = (s2, c1 || c2)
-  where
-    (s1, c1) = half_adder a b
-    (s2, c2) = half_adder s1 cin
-
-half_adder :: Bit -> Bit -> (Bit, Bit)
-half_adder a b = (a `xor` b, a && b)
-
-counting :: [Bit] -> [Bit] -> [Bit]
-counting = foldr add
-  where
-    add :: Bit -> [Bit] -> [Bit]
-    add x [] = [x]
-    add x (y:ys) = (x `xor` y):add (x && y) ys
+add :: Bit -> [Bit] -> [Bit]
+add x [] = [x]
+add x (y:ys) = (x `xor` y):add (x && y) ys
