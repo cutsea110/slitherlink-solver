@@ -46,50 +46,17 @@ showBoard p sol = do
       let (Just b) = Map.lookup ((r,col),(r+1,col)) sol
       putChar $ if b then '│' else ' '
       putChar '\n'
-      
-    putChar' ( Just n,  Just e,  Just s,  Just w) -- c
-      | n && e = putChar '└'
-      | n && s = putChar '│'
-      | n && w = putChar '┘'
-      | e && s = putChar '┌'
-      | e && w = putChar '─'
-      | s && w = putChar '┐'
-      | otherwise = putChar ' '
-    putChar' ( Nothing, Just e,  Just s, Nothing) -- lu
-      | e && s = putChar '┌'
-      | otherwise = putChar '+'
-    putChar' ( Nothing, Just e,  Just s,  Just w) -- u
-      | e && s = putChar '┌'
-      | e && w = putChar '─'
-      | s && w = putChar '┐'
-      | otherwise = putChar ' '
-    putChar' ( Nothing, Nothing, Just s,  Just w) -- ru
-      | s && w = putChar '┐'
-      | otherwise = putChar '+'
-    putChar' ( Just n,  Just e,  Just s, Nothing) -- l
-      | n && e = putChar '└'
-      | n && s = putChar '│'
-      | e && s = putChar '┌'
-      | otherwise = putChar ' '
-    putChar' ( Just n, Nothing,  Just s,  Just w) -- r
-      | n && s = putChar '│'
-      | n && w = putChar '┘'
-      | s && w = putChar '┐'
-      | otherwise = putChar ' '
-    putChar' ( Just n,  Just e, Nothing, Nothing) -- ld
-      | n && e = putChar '└'
-      | otherwise = putChar '+'
-    putChar' ( Just n,  Just e, Nothing,  Just w) -- d
-      | n && e = putChar '└'
-      | n && w = putChar '┘'
-      | e && w = putChar '─'
-      | otherwise = putChar ' '
-    putChar' ( Just n, Nothing, Nothing,  Just w) -- rd
-      | n && w = putChar '┘'
-      | otherwise = putChar '+'
-    putChar' (Nothing, Nothing, Nothing, Nothing) -- rd
-      = putChar ' '
-    putChar' _ = error "illegal pattern found"
+    border :: (Bool, Bool, Bool, Bool) -> Char
+    border (n, e, s, w)
+      | n && e = '└'
+      | e && s = '┌'
+      | s && w = '┐'
+      | w && n = '┘'
+      | n && s = '│'
+      | e && w = '─'
+      | otherwise = ' '
+    putChar' :: (Bool, Bool, Bool, Bool) -> IO ()
+    putChar' = putChar . border
 
 triv :: [String]
 triv = [ "  "
@@ -210,9 +177,10 @@ trueCountEq 0 xs = nor xs
 trueCountEq _ [] = false
 trueCountEq n (x:xs) = (x && trueCountEq (n-1) xs) || (not x && trueCountEq n xs)
 
-cross :: Map Line a -> Point -> (Maybe a, Maybe a, Maybe a, Maybe a)
-cross p (r,c) = (north, east, south, west)
+cross :: Boolean a => Map Line a -> Point -> (a, a, a, a)
+cross p (r,c) = (safe north, safe east, safe south, safe west)
   where
+    safe = maybe false id
     north = Map.lookup ((r-1,c), (r,c)) p
     west  = Map.lookup ((r,c-1), (r,c)) p
     south = Map.lookup ((r,c), (r+1,c)) p
