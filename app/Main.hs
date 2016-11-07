@@ -87,6 +87,7 @@ showBoard p sol = do
       | otherwise = putChar '+'
     putChar' (Nothing, Nothing, Nothing, Nothing) -- rd
       = putChar ' '
+    putChar' _ = error "illegal pattern found"
 
 triv :: [String]
 triv = [ "  "
@@ -125,9 +126,9 @@ type Hint = [(Cell, Int)]
 defineVariables :: (Variable a, HasSAT s, MonadState s m) =>
   Problem -> m ((Map Line a), (Map Cell a))
 defineVariables p = do
-  lines <- sequence $ Map.fromList [(line, exists) | line <- vLines ++ hLines]
-  cells <- sequence $ Map.fromList [(cell, exists) | cell <- range ((0,0),(row-1,col-1))]
-  return (lines, cells)
+  ls <- sequence $ Map.fromList [(line, exists) | line <- vLines ++ hLines]
+  cs <- sequence $ Map.fromList [(cell, exists) | cell <- range ((0,0),(row-1,col-1))]
+  return (ls, cs)
   where
     (row, col) = (length p, maximum $ map length p)
     vLines   = [((r, c), (r+1, c)) | r <- [0..row-1], c <- [0..col]]
@@ -147,13 +148,12 @@ validWith p hs = and $ map (validAssignment p) hs
 slitherlink :: (HasSAT s, MonadState s m) =>
   Problem -> m ((Map Line Bit), (Map Cell Bit))
 slitherlink p = do
-  (lines, cells) <- defineVariables p
-  let hint = hints p
-  assert $ lines `validWith` hint
-  assert $ formIsland lines
-  assert $ cells `divideBy` lines
-  assert $ singleIsland cells
-  return (lines, cells)
+  (ls, cs) <- defineVariables p
+  assert $ ls `validWith` (hints p)
+  assert $ formIsland ls
+  assert $ cs `divideBy` ls
+  assert $ singleIsland cs
+  return (ls, cs)
 
 singleIsland :: Map Cell Bit -> Bit
 singleIsland cs = cape === bay
@@ -192,10 +192,10 @@ validAssignment p ((x,y), n) = n `roundedBy` (a, b, c, d)
       = (Map.lookup vl p, Map.lookup vr p, Map.lookup hu p, Map.lookup hl p)
 
 formIsland :: Boolean a => Map Line a -> a
-formIsland p = foldr (\k b -> legalConnect k p && b) true (Map.keys p)
+formIsland p = foldr (\k b -> k `connectWith` p && b) true (Map.keys p)
 
-legalConnect :: Boolean a => Line -> Map Line a -> a
-legalConnect l p = l `isActiveOn` p ==> (singleton p1s && singleton p2s)
+connectWith :: Boolean a => Line -> Map Line a -> a
+l `connectWith` p = l `isActiveOn` p ==> (singleton p1s && singleton p2s)
   where
     p1s, p2s :: [Line]
     (p1s, p2s) = connectable l
@@ -208,7 +208,7 @@ trueCountEq 0 xs = nor xs
 trueCountEq _ [] = false
 trueCountEq n (x:xs) = (x && trueCountEq (n-1) xs) || (not x && trueCountEq n xs)
 
-cross :: Boolean a => Map Line a -> Point -> (Maybe a, Maybe a, Maybe a, Maybe a)
+cross :: Map Line a -> Point -> (Maybe a, Maybe a, Maybe a, Maybe a)
 cross p (r,c) = (north, east, south, west)
   where
     north = Map.lookup ((r-1,c), (r,c)) p
