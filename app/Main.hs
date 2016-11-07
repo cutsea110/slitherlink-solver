@@ -39,16 +39,18 @@ showBoard p sol = do
     putHorizontalArea :: Row -> IO ()
     putHorizontalArea r = do
       forM_ (range (0,col-1)) $ \c -> do
-        let (Just b) = Map.lookup ((r,c),(r+1,c)) sol
-        putChar $ if b then '│' else ' '
+        putWestBorder (r,c)
         putChar $ p !! r !! c
-      let (Just b) = Map.lookup ((r,col),(r+1,col)) sol
-      putChar $ if b then '│' else ' '
+      putWestBorder (r,col)
       putChar '\n'
     putNorthBorder :: Cell -> IO ()
     putNorthBorder (r,c) = putChar $ if b then '─' else ' '
       where
         Just b = Map.lookup ((r,c), (r,c+1)) sol
+    putWestBorder :: Cell -> IO ()
+    putWestBorder (r,c) = putChar $ if b then '│' else ' '
+      where
+        Just b = Map.lookup ((r,c), (r+1,c)) sol
     putCorner :: (Bool, Bool, Bool, Bool) -> IO ()
     putCorner (n, e, s, w) = putChar ch
       where
