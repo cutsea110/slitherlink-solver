@@ -136,11 +136,19 @@ type Line = (Point,Point)
 type Problem = [String]
 type Hint = [(Cell, Int)]
 
+
+exists3 :: (Variable a, HasSAT s, MonadState s m) => m (a, (a, a))
+exists3 = do
+  x <- exists
+  y <- exists
+  z <- exists
+  return (x, (y, z))
+
 defineVariables :: (Variable a, HasSAT s, MonadState s m) =>
-  Problem -> m ((Map Line a), (Map Cell a))
+  Problem -> m ((Map Line a), (Map Cell (a, (a, a))))
 defineVariables p = do
   ls <- sequence $ Map.fromList [(line, exists) | line <- vLines ++ hLines]
-  cs <- sequence $ Map.fromList [(cell, exists) | cell <- range ((0,0),(row-1,col-1))]
+  cs <- sequence $ Map.fromList [(cell, exists3) | cell <- range ((0,0),(row-1,col-1))]
   return (ls, cs)
   where
     (row, col) = (length p, maximum $ map length p)
@@ -159,16 +167,17 @@ validWith :: Boolean a => Map Line a -> [(Cell, Int)] -> a
 validWith p hs = and $ map (validAssignment p) hs
 
 slitherlink :: (HasSAT s, MonadState s m) =>
-  Problem -> m ((Map Line Bit), (Map Cell Bit))
+  Problem -> m ((Map Line Bit), (Map Cell (Bit, (Bit, Bit))))
 slitherlink p = do
   (ls, cs) <- defineVariables p
   assert $ ls `validWith` (hints p)
   assert $ formIsland ls
   assert $ cs `divideBy` ls
+  assert $ detectCopeBay cs
   assert $ singleIsland cs
   return (ls, cs)
 
-singleIsland :: Map Cell Bit -> Bit
+singleIsland :: Map Cell (Bit, (Bit, Bit)) -> Bit
 singleIsland cs = cape === bay
   where
     count :: (Cell -> Bit) -> [Bit] -> [Bit]
@@ -176,24 +185,28 @@ singleIsland cs = cape === bay
     cape, bay :: [Bit]
     cape = count isCape [false]
     bay = count isBay [true]
-    safe = maybe false id
-    isCape c@(x, y) = here && not (safe north) && not (safe west)
-      where
-        Just here = Map.lookup c cs
-        (north, west) = (Map.lookup (x-1,y) cs, Map.lookup (x,y-1) cs)
-    isBay c@(x, y) = not here && safe south && safe east
-      where
-        Just here = Map.lookup c cs
-        (south, east) = (Map.lookup (x+1,y) cs, Map.lookup (x,y+1) cs)
+    isCape c = maybe false (fst.snd) $ Map.lookup c cs
+    isBay c = maybe false (snd.snd) $ Map.lookup c cs
 
-divideBy :: (Boolean a, Equatable a) => Map Cell a -> Map Line a -> Bit
+detectCopeBay :: Map Cell (Bit, (Bit, Bit)) -> Bit
+detectCopeBay cs = and $ map detect (Map.keys cs)
+  where
+    detect c@(x,y) = (cope === (isLand here && isOcean north && isOcean west)) &&
+                     (bay === (isOcean here && isLand south && isLand east))
+      where
+        (isLand, isOcean) = (id, not)
+        Just (here, (cope, bay)) = Map.lookup c cs
+        help pos = maybe false fst $ Map.lookup pos cs
+        (north, west, south, east) = (help (x-1, y), help (x, y-1), help (x+1, y), help (x, y+1))
+
+divideBy :: (Boolean a, Equatable a) => Map Cell (a, (a, a)) -> Map Line a -> Bit
 cs `divideBy` ls =  and $ map (`isIslandOrOcean` (ls, cs)) (Map.keys cs)
 
-isIslandOrOcean :: (Boolean a, Equatable a) => Cell -> (Map Line a, Map Cell a) -> Bit
+isIslandOrOcean :: (Boolean a, Equatable a) => Cell -> (Map Line a, Map Cell (a, (a, a))) -> Bit
 c@(x, y) `isIslandOrOcean` (ls, cs) = here === (west `xor` left)
   where
-    Just here = Map.lookup c cs
-    west = maybe false id $ Map.lookup (x, y-1) cs
+    Just (here, _) = Map.lookup c cs
+    west = maybe false fst $ Map.lookup (x, y-1) cs
     Just left = Map.lookup ((x,y), (x+1,y)) ls
 
 validAssignment :: Boolean a => Map Line a -> ((Row, Col), Int) -> a
