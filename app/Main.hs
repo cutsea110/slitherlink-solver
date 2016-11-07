@@ -13,7 +13,7 @@ import Data.Traversable (sequence)
 import Ersatz
 
 main :: IO ()
-main = runSlitherlink problem36x20
+main = runSlitherlink sample
 
 runSlitherlink :: Problem -> IO ()
 runSlitherlink p = do
