@@ -3,7 +3,7 @@ module Main where
 import Prelude hiding (all, any, and, not, or, (&&), (||))
 import Control.Arrow ((***))
 import Control.Monad (forM_)
-import Control.Monad.State (MonadState, runState)
+import Control.Monad.State (MonadState)
 import Data.Array
 import Data.Char (isDigit, ord)
 import Data.Map (Map)
@@ -19,92 +19,54 @@ runSlitherlink :: Problem -> IO ()
 runSlitherlink p = do
   (Satisfied, Just solution) <- minisat `solveWith` (slitherlink p)
   showBoard p $ fst solution
-  paintBoard p $ snd solution
   return ()
-
-paintBoard :: Problem -> Map Cell Bool -> IO ()
-paintBoard p cs = do
-  forM_ (range (0, row-1)) $ \r -> do
-    forM_ (range (0, col-1)) $ \c -> do
-      let Just b = Map.lookup (r,c) cs
-      putChar $ if b then 'x' else ' '
-    putChar '\n'
-  putChar '\n'
-  where
-    (row, col) = (length p, maximum $ map length p)
 
 showBoard :: Problem -> Map Line Bool -> IO ()
 showBoard p sol = do
   forM_ (range (0,row-1)) $ \r -> do
-    forM_ (range (0,col-1)) $ \c -> do
-      putChar' $ cross sol (r,c)
-      let (Just b) = Map.lookup ((r,c),(r,c+1)) sol
-      putChar $ if b then '─' else ' '
-    putChar' $ cross sol (r, col)
-    putChar '\n'
-    forM_ (range (0,col-1)) $ \c -> do
-      let (Just b) = Map.lookup ((r,c),(r+1,c)) sol
-      putChar $ if b then '│' else ' '
-      putChar $ p !! r !! c
-    let (Just b) = Map.lookup ((r,col),(r+1,col)) sol
-    putChar $ if b then '│' else ' '
-    putChar '\n'
-  forM_ (range (0,col-1)) $ \c -> do
-    putChar' $ cross sol (row, c)
-    let (Just b) = Map.lookup ((row,c),(row,c+1)) sol
-    putChar $ if b then '─' else ' '
-  putChar' $ cross sol (row, col)
-  putChar '\n'
+    putHorizontalLine r
+    putHorizontalArea r
+  putHorizontalLine row
   where
     (row, col) = (length p, maximum $ map length p)
-    putChar' ( Just n,  Just e,  Just s,  Just w) -- c
-      | n && e = putChar '└'
-      | n && s = putChar '│'
-      | n && w = putChar '┘'
-      | e && s = putChar '┌'
-      | e && w = putChar '─'
-      | s && w = putChar '┐'
-      | otherwise = putChar ' '
-    putChar' ( Nothing, Just e,  Just s, Nothing) -- lu
-      | e && s = putChar '┌'
-      | otherwise = putChar '+'
-    putChar' ( Nothing, Just e,  Just s,  Just w) -- u
-      | e && s = putChar '┌'
-      | e && w = putChar '─'
-      | s && w = putChar '┐'
-      | otherwise = putChar ' '
-    putChar' ( Nothing, Nothing, Just s,  Just w) -- ru
-      | s && w = putChar '┐'
-      | otherwise = putChar '+'
-    putChar' ( Just n,  Just e,  Just s, Nothing) -- l
-      | n && e = putChar '└'
-      | n && s = putChar '│'
-      | e && s = putChar '┌'
-      | otherwise = putChar ' '
-    putChar' ( Just n, Nothing,  Just s,  Just w) -- r
-      | n && s = putChar '│'
-      | n && w = putChar '┘'
-      | s && w = putChar '┐'
-      | otherwise = putChar ' '
-    putChar' ( Just n,  Just e, Nothing, Nothing) -- ld
-      | n && e = putChar '└'
-      | otherwise = putChar '+'
-    putChar' ( Just n,  Just e, Nothing,  Just w) -- d
-      | n && e = putChar '└'
-      | n && w = putChar '┘'
-      | e && w = putChar '─'
-      | otherwise = putChar ' '
-    putChar' ( Just n, Nothing, Nothing,  Just w) -- rd
-      | n && w = putChar '┘'
-      | otherwise = putChar '+'
-    putChar' (Nothing, Nothing, Nothing, Nothing) -- rd
-      = putChar ' '
+    putHorizontalLine :: Row -> IO ()
+    putHorizontalLine r = do
+      forM_ (range (0,col-1)) $ \c -> do
+        putCorner $ cross sol (r,c)
+        putNorthBorder (r,c)
+      putCorner $ cross sol (r, col)
+      putChar '\n'
+    putHorizontalArea :: Row -> IO ()
+    putHorizontalArea r = do
+      forM_ (range (0,col-1)) $ \c -> do
+        putWestBorder (r,c)
+        putChar $ p !! r !! c
+      putWestBorder (r,col)
+      putChar '\n'
+    putNorthBorder :: Cell -> IO ()
+    putNorthBorder (r,c) = putChar $ if b then '─' else ' '
+      where
+        Just b = Map.lookup ((r,c), (r,c+1)) sol
+    putWestBorder :: Cell -> IO ()
+    putWestBorder (r,c) = putChar $ if b then '│' else ' '
+      where
+        Just b = Map.lookup ((r,c), (r+1,c)) sol
+    putCorner :: (Bool, Bool, Bool, Bool) -> IO ()
+    putCorner (n, e, s, w) = putChar ch
+      where
+        ch | n && e = '└'
+           | e && s = '┌'
+           | s && w = '┐'
+           | w && n = '┘'
+           | n && s = '│'
+           | e && w = '─'
+           | otherwise = ' '
 
-triv :: [String]
+triv :: Problem
 triv = [ "  "
        , " 4"
        ]
-sample :: [String]
+sample :: Problem
 sample = [ "3  21 3"
          , "  3    "
          , "1 3 23 "
@@ -114,7 +76,7 @@ sample = [ "3  21 3"
          , "0 13  3"
          ]
 
-problem :: [String]
+problem :: Problem
 problem = [ " 3 12  212  31 "
           , "3   3     1   0"
           , "  3   3  1  2  "
@@ -126,6 +88,46 @@ problem = [ " 3 12  212  31 "
           , " 01  233  20 2 "
           ]
 
+-- Slitherlink Puzzle
+-- http://www.nikoli.co.jp/en/puzzles/slitherlink/
+-- size 8 8
+problem8x8 :: Problem
+problem8x8=[ " 0 1  1 "
+           , " 3  23 2"
+           , "  0    0"
+           , " 3  0   "
+           , "   3  0 "
+           , "1    3  "
+           , "3 13  3 "
+           , " 0  3 3 "
+           ]
+             
+-- Slitherlink Puzzle
+-- http://www.nikoli.co.jp/en/puzzles/slitherlink/
+-- size 36 20
+problem36x20 :: [String]
+problem36x20 = [ "   3    0 122           21 01     20"
+               , " 303 01      3321  30 2             "
+               , " 3      2            3 3 3  3  3  23"
+               , " 3  3 0   0 3  33  3 2   01 3  0    "
+               , " 3 0   32 2 0    3     3    3   20 3"
+               , "    32 3  3 2  22   0   13 1  33  3 "
+               , "131        2 2      3 1    2    1 2 "
+               , "     3 2 0   3 2  3 2  3            "
+               , "  30 3  1 31  3   0    3 20 3 20  31"
+               , "2  3 2      3  2  3         0    0  "
+               , "  1    2         2  0  2      2 1  1"
+               , "32  03 2 33 2    1   2  22 3  0 33  "
+               , "            0  2 3  2 2   3 3 1     "
+               , " 3 2    3    3 2      0 2        320"
+               , " 3  21  3 01   0   21  2 3  0 22    "
+               , "2 03   1    3     2    1 0 12   3 2 "
+               , "    2  3 13   2 0  20  2 3   2 2  3 "
+               , "13  2  3  2 0 1            3      0 "
+               , "             3 33  2333      33 333 "
+               , "10     01 21           101 1    2   "
+               ]
+               
 type Row = Int
 type Col = Int
 type Point = (Row, Col)
@@ -137,9 +139,9 @@ type Hint = [(Cell, Int)]
 defineVariables :: (Variable a, HasSAT s, MonadState s m) =>
   Problem -> m ((Map Line a), (Map Cell a))
 defineVariables p = do
-  lines <- sequence $ Map.fromList [(line, exists) | line <- vLines ++ hLines]
-  cells <- sequence $ Map.fromList [(cell, exists) | cell <- range ((0,0),(row-1,col-1))]
-  return (lines, cells)
+  ls <- sequence $ Map.fromList [(line, exists) | line <- vLines ++ hLines]
+  cs <- sequence $ Map.fromList [(cell, exists) | cell <- range ((0,0),(row-1,col-1))]
+  return (ls, cs)
   where
     (row, col) = (length p, maximum $ map length p)
     vLines   = [((r, c), (r+1, c)) | r <- [0..row-1], c <- [0..col]]
@@ -159,19 +161,36 @@ validWith p hs = and $ map (validAssignment p) hs
 slitherlink :: (HasSAT s, MonadState s m) =>
   Problem -> m ((Map Line Bit), (Map Cell Bit))
 slitherlink p = do
-  (lines, cells) <- defineVariables p
-  let hint = hints p
-  assert $ lines `validWith` hint
-  assert $ cyclic lines
-  assert $ cells `paintedBy` lines
-  return (lines, cells)
+  (ls, cs) <- defineVariables p
+  assert $ ls `validWith` (hints p)
+  assert $ formIsland ls
+  assert $ cs `divideBy` ls
+  assert $ singleIsland cs
+  return (ls, cs)
 
-paintedBy :: (Boolean a, Equatable a) => Map Cell a -> Map Line a -> Bit
-cs `paintedBy` ls =  and $ map (\c -> legalPaint c (ls, cs)) (Map.keys cs)
+singleIsland :: Map Cell Bit -> Bit
+singleIsland cs = cape === bay
+  where
+    count :: (Cell -> Bit) -> [Bit] -> [Bit]
+    count p base = foldr (\c bs -> p c `add` bs) base $ Map.keys cs
+    cape, bay :: [Bit]
+    cape = count isCape [false]
+    bay = count isBay [true]
+    safe = maybe false id
+    isCape c@(x, y) = here && not (safe north) && not (safe west)
+      where
+        Just here = Map.lookup c cs
+        (north, west) = (Map.lookup (x-1,y) cs, Map.lookup (x,y-1) cs)
+    isBay c@(x, y) = not here && safe south && safe east
+      where
+        Just here = Map.lookup c cs
+        (south, east) = (Map.lookup (x+1,y) cs, Map.lookup (x,y+1) cs)
 
+divideBy :: (Boolean a, Equatable a) => Map Cell a -> Map Line a -> Bit
+cs `divideBy` ls =  and $ map (`isIslandOrOcean` (ls, cs)) (Map.keys cs)
 
-legalPaint :: (Boolean a, Equatable a) => Cell -> (Map Line a, Map Cell a) -> Bit
-legalPaint c@(x, y) (ls, cs) = here === (west `xor` left)
+isIslandOrOcean :: (Boolean a, Equatable a) => Cell -> (Map Line a, Map Cell a) -> Bit
+c@(x, y) `isIslandOrOcean` (ls, cs) = here === (west `xor` left)
   where
     Just here = Map.lookup c cs
     west = maybe false id $ Map.lookup (x, y-1) cs
@@ -185,11 +204,11 @@ validAssignment p ((x,y), n) = n `roundedBy` (a, b, c, d)
     (Just a, Just b, Just c, Just d)
       = (Map.lookup vl p, Map.lookup vr p, Map.lookup hu p, Map.lookup hl p)
 
-cyclic :: Boolean a => Map Line a -> a
-cyclic p = foldr (\k b -> legalConnect k p && b) true (Map.keys p)
+formIsland :: Boolean a => Map Line a -> a
+formIsland p = foldr (\k b -> k `connectWith` p && b) true (Map.keys p)
 
-legalConnect :: Boolean a => Line -> Map Line a -> a
-legalConnect l p = l `isActiveOn` p ==> (singleton p1s && singleton p2s)
+connectWith :: Boolean a => Line -> Map Line a -> a
+l `connectWith` p = l `isActiveOn` p ==> (singleton p1s && singleton p2s)
   where
     p1s, p2s :: [Line]
     (p1s, p2s) = connectable l
@@ -202,9 +221,10 @@ trueCountEq 0 xs = nor xs
 trueCountEq _ [] = false
 trueCountEq n (x:xs) = (x && trueCountEq (n-1) xs) || (not x && trueCountEq n xs)
 
-cross :: Boolean a => Map Line a -> Point -> (Maybe a, Maybe a, Maybe a, Maybe a)
-cross p (r,c) = (north, east, south, west)
+cross :: Boolean a => Map Line a -> Point -> (a, a, a, a)
+cross p (r,c) = (safe north, safe east, safe south, safe west)
   where
+    safe = maybe false id
     north = Map.lookup ((r-1,c), (r,c)) p
     west  = Map.lookup ((r,c-1), (r,c)) p
     south = Map.lookup ((r,c), (r+1,c)) p
@@ -226,19 +246,6 @@ roundedBy :: Boolean a => Int -> (a, a, a, a) -> a
 roundedBy n (a,b,c,d) = trueCountEq n [a,b,c,d]
 
 -- Arithmetic
-
-full_adder :: Bit -> Bit -> Bit -> (Bit, Bit)
-full_adder a b cin = (s2, c1 || c2)
-  where
-    (s1, c1) = half_adder a b
-    (s2, c2) = half_adder s1 cin
-
-half_adder :: Bit -> Bit -> (Bit, Bit)
-half_adder a b = (a `xor` b, a && b)
-
-counting :: [Bit] -> [Bit] -> [Bit]
-counting = foldr add
-  where
-    add :: Bit -> [Bit] -> [Bit]
-    add x [] = [x]
-    add x (y:ys) = (x `xor` y):add (x && y) ys
+add :: Bit -> [Bit] -> [Bit]
+add x [] = [x]
+add x (y:ys) = (x `xor` y):add (x && y) ys
