@@ -171,20 +171,15 @@ slitherlink p = do
 singleIsland :: Map Cell Bit -> Bit
 singleIsland cs = cape === bay
   where
-    count :: (Cell -> Bit) -> [Bit] -> [Bit]
-    count p base = foldr (\c bs -> p c `add` bs) base $ Map.keys cs
-    cape, bay :: [Bit]
-    cape = count isCape [false]
-    bay = count isBay [true]
-    safe = maybe false id
-    isCape c@(x, y) = here && not (safe north) && not (safe west)
+    count p base = sumBit (base:(map p $ Map.keys cs))
+    cape = count (fst.isCapeBay) false
+    bay = count (snd.isCapeBay) true
+    isCapeBay c@(x, y) = (here && not north && not west, not here && south && east)
       where
+        safe = maybe false id
         Just here = Map.lookup c cs
-        (north, west) = (Map.lookup (x-1,y) cs, Map.lookup (x,y-1) cs)
-    isBay c@(x, y) = not here && safe south && safe east
-      where
-        Just here = Map.lookup c cs
-        (south, east) = (Map.lookup (x+1,y) cs, Map.lookup (x,y+1) cs)
+        (north, west) = (safe *** safe) (Map.lookup (x-1,y) cs, Map.lookup (x,y-1) cs)
+        (south, east) = (safe *** safe) (Map.lookup (x+1,y) cs, Map.lookup (x,y+1) cs)
 
 divideBy :: (Boolean a, Equatable a) => Map Cell a -> Map Line a -> Bit
 cs `divideBy` ls =  and $ map (`isIslandOrOcean` (ls, cs)) (Map.keys cs)
@@ -243,17 +238,3 @@ connectable l@(p1@(r1, c1), p2@(r2, c2))
 
 roundedBy :: Boolean a => Int -> (a, a, a, a) -> a
 roundedBy n (a,b,c,d) = trueCountEq n [a,b,c,d]
-
--- Arithmetic
-halfAddr :: Boolean a => a -> a -> (a, a)
-halfAddr x y = (x `xor` y, x && y)
-
-fullAddr :: Boolean a => a -> a -> a -> (a, a)
-fullAddr x y cin = (s2, c1 || c2)
-  where
-    (s1, c1) = halfAddr x y
-    (s2, c2) = halfAddr s1 cin
-
-add :: Bit -> [Bit] -> [Bit]
-add x [] = [x]
-add x (y:ys) = (x `xor` y):add (x && y) ys
