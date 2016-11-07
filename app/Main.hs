@@ -32,10 +32,10 @@ showBoard p sol = do
     putHorizontalLine :: Row -> IO ()
     putHorizontalLine r = do
       forM_ (range (0,col-1)) $ \c -> do
-        putChar' $ cross sol (r,c)
+        putBorder $ cross sol (r,c)
         let (Just b) = Map.lookup ((r,c),(r,c+1)) sol
         putChar $ if b then '─' else ' '
-      putChar' $ cross sol (r, col)
+      putBorder $ cross sol (r, col)
       putChar '\n'
     putHorizontalArea :: Row -> IO ()
     putHorizontalArea r = do
@@ -46,17 +46,16 @@ showBoard p sol = do
       let (Just b) = Map.lookup ((r,col),(r+1,col)) sol
       putChar $ if b then '│' else ' '
       putChar '\n'
-    border :: (Bool, Bool, Bool, Bool) -> Char
-    border (n, e, s, w)
-      | n && e = '└'
-      | e && s = '┌'
-      | s && w = '┐'
-      | w && n = '┘'
-      | n && s = '│'
-      | e && w = '─'
-      | otherwise = ' '
-    putChar' :: (Bool, Bool, Bool, Bool) -> IO ()
-    putChar' = putChar . border
+    putBorder :: (Bool, Bool, Bool, Bool) -> IO ()
+    putBorder (n, e, s, w) = putChar ch
+      where
+        ch | n && e = '└'
+           | e && s = '┌'
+           | s && w = '┐'
+           | w && n = '┘'
+           | n && s = '│'
+           | e && w = '─'
+           | otherwise = ' '
 
 triv :: [String]
 triv = [ "  "
