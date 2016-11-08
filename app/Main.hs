@@ -329,16 +329,28 @@ cs `divideBy` ls =  and $ map (`isIslandOrOcean` (ls, cs)) (Map.keys cs)
 -- isIslandOrOcean :: (Boolean a, Equatable a) => Cell -> (Map Line a, Map Cell a) -> Bit
 c@(x, y) `isIslandOrOcean` (ls, cs) = -- here === west `xor` left
   (
-    ((not north && not above) ==> not here) &&
-    ((not east && not right) ==> not here) &&
-    ((not south && not below) ==> not here) &&
-    ((not west && not left) ==> not here) &&
-    ((not north && above) ==> here) &&
-    ((not east && right) ==> here) &&
-    ((not south && below) ==> here) &&
-    ((not west && left) ==> here)
+    (northOcean ==> not here) &&
+    (eastOcean ==> not here) &&
+    (southOcean ==> not here) &&
+    (westOcean ==> not here) &&
+    (landFromNorth ==> here) &&
+    (landFromEast ==> here) &&
+    (landFromSouth ==> here) &&
+    (landFromWest ==> here)
   )
   where
+    northOcean = not north && not above
+    eastOcean = not east && not right
+    southOcean = not south && not below
+    westOcean = not west && not left
+    landFromNorth = not north && above
+    landFromEast = not east && right
+    landFromSouth = not south && below
+    landFromWest = not west && left
+    northLand = north && not above
+    eastLand = east && not right
+    southLand = south && not below
+    westLand = west && not left
     Just here = Map.lookup c cs
     safe = maybe false id
     (north, west) = (safe *** safe) (Map.lookup (x-1,y) cs, Map.lookup (x,y-1) cs)
