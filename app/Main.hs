@@ -321,11 +321,21 @@ singleIsland cs = cape === bayPlus1
         (north, west) = (safe *** safe) (Map.lookup (x-1,y) cs, Map.lookup (x,y-1) cs)
         (south, east) = (safe *** safe) (Map.lookup (x+1,y) cs, Map.lookup (x,y+1) cs)
 
-divideBy :: (Boolean a, Equatable a) => Map Cell a -> Map Line a -> Bit
+-- divideBy :: (Boolean a, Equatable a) => Map Cell a -> Map Line a -> Bit
 cs `divideBy` ls =  and $ map (`isIslandOrOcean` (ls, cs)) (Map.keys cs)
 
-isIslandOrOcean :: (Boolean a, Equatable a) => Cell -> (Map Line a, Map Cell a) -> Bit
-c@(x, y) `isIslandOrOcean` (ls, cs) = here === (west `xor` left)
+-- isIslandOrOcean :: (Boolean a, Equatable a) => Cell -> (Map Line a, Map Cell a) -> Bit
+c@(x, y) `isIslandOrOcean` (ls, cs) = -- here === west `xor` left
+  (
+    ((not north && not above) ==> not here) &&
+    ((not east && not right) ==> not here) &&
+    ((not south && not below) ==> not here) &&
+    ((not west && not left) ==> not here) &&
+    ((not north && above) ==> here) &&
+    ((not east && right) ==> here) &&
+    ((not south && below) ==> here) &&
+    ((not west && left) ==> here)
+  )
   where
     Just here = Map.lookup c cs
     safe = maybe false id
