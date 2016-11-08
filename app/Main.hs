@@ -305,21 +305,23 @@ slitherlink p = do
   assert $ ls `validWith` (hints p)
   assert $ formIsland ls
   assert $ cs `divideBy` ls
-  assert $ singleIsland cs
+  assert $ singleIsland (ls, cs)
   return (ls, cs)
 
-singleIsland :: Map Cell Bit -> Bit
-singleIsland cs = cape === bayPlus1
+singleIsland :: (Map Line Bit, Map Cell Bit) -> Bit
+singleIsland (ls, cs) = cape === bayPlus1
   where
     count p base = sumBit (base:(map p $ Map.keys cs))
     cape = count (fst.isCapeBay) false
     bayPlus1 = count (snd.isCapeBay) true
-    isCapeBay c@(x, y) = (here && not north && not west, not here && south && east)
+    isCapeBay c@(x, y) = (here && above && left, not here && below && right)
       where
-        safe = maybe false id
         Just here = Map.lookup c cs
-        (north, west) = (safe *** safe) (Map.lookup (x-1,y) cs, Map.lookup (x,y-1) cs)
-        (south, east) = (safe *** safe) (Map.lookup (x+1,y) cs, Map.lookup (x,y+1) cs)
+        above = let Just b = Map.lookup ((x,y),(x,y+1)) ls in b
+        left = let Just b = Map.lookup ((x,y),(x+1,y)) ls in b
+        below = let Just b = Map.lookup ((x+1,y),(x+1,y+1)) ls in b
+        right = let Just b = Map.lookup ((x,y+1),(x+1,y+1)) ls in b
+        
 
 -- divideBy :: (Boolean a, Equatable a) => Map Cell a -> Map Line a -> Bit
 cs `divideBy` ls =  and $ map (`isIslandOrOcean` (ls, cs)) (Map.keys cs)
