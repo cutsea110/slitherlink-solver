@@ -9,11 +9,9 @@ import Data.Char (isDigit, ord)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Traversable (sequence)
+import Data.Word (Word8)
 
 import Ersatz
-
-sizeLimit :: Int
-sizeLimit = 6
 
 main :: IO ()
 main = runSlitherlink sample
@@ -25,7 +23,7 @@ runSlitherlink p = do
   paintBoard p $ snd solution
   return ()
 
-paintBoard :: Problem -> Map Cell (Bool, (Integer, Integer)) -> IO ()
+paintBoard :: Problem -> Map Cell (Bool, Word8) -> IO ()
 paintBoard p cs = do
   putStrLn "------------------------------------"
   forM_ (range (0,row-1)) $ \r -> do
@@ -286,19 +284,13 @@ type Line = (Point,Point)
 type Problem = [String]
 type Hint = [(Cell, Int)]
 
-existsPos :: (HasSAT s, MonadState s m) => m (Bits, Bits)
-existsPos = (,) <$> existsBits <*> existsBits
-  where
-    existsBits = liftM Bits $ replicateM sizeLimit exists
-      
 defineVariables :: (Variable a, HasSAT s, MonadState s m) =>
-  Problem -> m ((Map Line a), (Map Cell (a, (Bits, Bits))))
+  Problem -> m ((Map Line a), (Map Cell (a, Bit4)))
 defineVariables p = do
   ls <- sequence $ Map.fromList [(line, exists) | line <- vLines ++ hLines]
-  cs <- sequence $ Map.fromList [(cell, exists') | cell <- range ((0,0),(row-1,col-1))]
+  cs <- sequence $ Map.fromList [(cell, exists) | cell <- range ((0,0),(row-1,col-1))]
   return (ls, cs)
   where
-    exists' = (,) <$> exists <*> existsPos
     (row, col) = (length p, maximum $ map length p)
     vLines   = [((r, c), (r+1, c)) | r <- [0..row-1], c <- [0..col]]
     hLines = [((r, c), (r, c+1)) | r <- [0..row], c <- [0..col-1]]
@@ -315,7 +307,7 @@ validWith :: Boolean a => Map Line a -> [(Cell, Int)] -> a
 validWith p hs = and $ map (validAssignment p) hs
 
 slitherlink :: (HasSAT s, MonadState s m) =>
-  Problem -> m ((Map Line Bit), (Map Cell (Bit, (Bits, Bits))))
+  Problem -> m ((Map Line Bit), (Map Cell (Bit, Bit4)))
 slitherlink p = do
   (ls, cs) <- defineVariables p
   assert $ ls `validWith` (hints p)
@@ -324,7 +316,7 @@ slitherlink p = do
   assert $ singleIsland (ls, cs)
   return (ls, cs)
 
-singleIsland :: (Map Line Bit, Map Cell (Bit, (Bits, Bits))) -> Bit
+singleIsland :: (Map Line Bit, Map Cell (Bit, Bit4)) -> Bit
 singleIsland (ls, cs) = cape === bayPlus1
   where
     count p base = sumBit (base:(map p $ Map.keys cs))
@@ -339,10 +331,10 @@ singleIsland (ls, cs) = cape === bayPlus1
         right = let Just b = Map.lookup ((x,y+1),(x+1,y+1)) ls in b
         
 
-divideBy :: (Boolean a, Equatable a) => Map Cell (a, (Bits, Bits)) -> Map Line Bit -> Bit
+divideBy :: (Boolean a, Equatable a) => Map Cell (a, Bit4) -> Map Line Bit -> Bit
 cs `divideBy` ls =  and $ map (`contour` (ls, cs)) (Map.keys cs)
 
-contour :: Cell -> (Map Line Bit, Map Cell (a, (Bits, Bits))) -> Bit
+contour :: Cell -> (Map Line Bit, Map Cell (a, Bit4)) -> Bit
 contour c@(x, y) (ls, cs) =
   (
     (not above ==> here === north) &&
@@ -355,22 +347,20 @@ contour c@(x, y) (ls, cs) =
     (left  ==> here /== west)
   )
   where
-    seaLevel :: (Bits, Bits)
-    seaLevel = (intToBits 100, intToBits 100)
-    here :: (Bits, Bits)
+    seaLevel :: Bit4
+    seaLevel = encode 0
+    here :: Bit4
     Just (_, here) = Map.lookup c cs
     (Just above, Just right) = (Map.lookup ((x,y),(x,y+1)) ls, Map.lookup ((x,y+1),(x+1,y+1)) ls)
     (Just left, Just below) = (Map.lookup ((x,y),(x+1,y)) ls, Map.lookup ((x+1,y),(x+1,y+1)) ls)
-    safe :: Maybe (a, (Bits, Bits)) -> (Bits, Bits)
+    safe :: Maybe (a, Bit4) -> Bit4
     safe = maybe seaLevel snd
-    intToBits :: Int -> Bits
-    intToBits = encode . fromIntegral
-    north, east, south, west :: (Bits, Bits)
+    north, east, south, west :: Bit4
     (north, east) = (safe *** safe) (Map.lookup (x-1,y) cs, Map.lookup (x,y+1) cs)
     (south, west) = (safe *** safe) (Map.lookup (x+1,y) cs, Map.lookup (x,y-1) cs)
 
 isIslandOrOcean :: (Boolean a, Equatable a) =>
-  Cell -> (Map Line a, Map Cell (a, (Bits, Bits))) -> Bit
+  Cell -> (Map Line a, Map Cell (a, Bit4)) -> Bit
 c@(x, y) `isIslandOrOcean` (ls, cs) = undefined -- here === west `xor` left
 
 validAssignment :: Boolean a => Map Line a -> ((Row, Col), Int) -> a
