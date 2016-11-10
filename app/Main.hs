@@ -336,7 +336,15 @@ c@(x, y) `isIslandOrOcean` (ls, cs) = -- here === west `xor` left
     (landFromNorth ==> here) &&
     (landFromEast ==> here) &&
     (landFromSouth ==> here) &&
-    (landFromWest ==> here)
+    (landFromWest ==> here) &&
+    (northLand ==> here) &&
+    (eastLand ==> here) &&
+    (southLand ==> here) &&
+    (westLand ==> here) &&
+    ((not (northOcean || eastOcean || southOcean || westOcean ||
+           landFromNorth || landFromEast || landFromSouth || landFromWest ||
+           northLand || eastLand || southLand || westLand))
+      ==> (not (west `xor` left) === here))
   )
   where
     northOcean = not north && not above
