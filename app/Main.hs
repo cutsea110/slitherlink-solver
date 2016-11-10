@@ -27,10 +27,17 @@ runSlitherlink p = do
 
 paintBoard :: Problem -> Map Cell (Bool, (Integer, Integer)) -> IO ()
 paintBoard p cs = do
+  putStrLn "------------------------------------"
   forM_ (range (0,row-1)) $ \r -> do
     forM_ (range (0,col-1)) $ \c -> do
       let Just (b, _) = Map.lookup (r,c) cs
       putChar $ if b then 'X' else ' '
+    putStrLn "+"
+  putStrLn "------------------------------------"
+  forM_ (range (0,row-1)) $ \r -> do
+    forM_ (range (0,col-1)) $ \c -> do
+      let Just (_, lvl) = Map.lookup (r,c) cs
+      putStr $ show lvl
     putStrLn "+"
     where
       (row, col) = (length p, maximum $ map length p)
@@ -332,10 +339,10 @@ singleIsland (ls, cs) = cape === bayPlus1
         right = let Just b = Map.lookup ((x,y+1),(x+1,y+1)) ls in b
         
 
-divideBy :: (Boolean a, Equatable a) => Map Cell (a, (Bits, Bits)) -> Map Line a -> Bit
-cs `divideBy` ls =  and $ map (`isIslandOrOcean` (ls, cs)) (Map.keys cs)
+divideBy :: (Boolean a, Equatable a) => Map Cell (a, (Bits, Bits)) -> Map Line Bit -> Bit
+cs `divideBy` ls =  and $ map (`contour` (ls, cs)) (Map.keys cs)
 
--- contour ::  (Boolean a, Equatable a) => Cell -> Map Cell (a, (Bits, Bits)) -> Map Line a -> Bit
+contour :: Cell -> (Map Line Bit, Map Cell (a, (Bits, Bits))) -> Bit
 contour c@(x, y) (ls, cs) =
   (
     (not above ==> here === north) &&
