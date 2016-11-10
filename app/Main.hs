@@ -332,10 +332,11 @@ singleIsland (ls, cs) = cape === bayPlus1
         right = let Just b = Map.lookup ((x,y+1),(x+1,y+1)) ls in b
         
 
--- divideBy :: (Boolean a, Equatable a) => Map Cell a -> Map Line a -> Bit
+divideBy :: (Boolean a, Equatable a) => Map Cell (a, (Bits, Bits)) -> Map Line a -> Bit
 cs `divideBy` ls =  and $ map (`isIslandOrOcean` (ls, cs)) (Map.keys cs)
 
--- isIslandOrOcean :: (Boolean a, Equatable a) => Cell -> (Map Line a, Map Cell a) -> Bit
+isIslandOrOcean :: (Boolean a, Equatable a) =>
+  Cell -> (Map Line a, Map Cell (a, (Bits, Bits))) -> Bit
 c@(x, y) `isIslandOrOcean` (ls, cs) = undefined -- here === west `xor` left
 
 validAssignment :: Boolean a => Map Line a -> ((Row, Col), Int) -> a
