@@ -2,7 +2,7 @@ module Main where
 
 import Prelude hiding (all, any, and, not, or, (&&), (||))
 import Control.Arrow ((***))
-import Control.Monad (forM_)
+import Control.Monad (forM_, replicateM, liftM)
 import Control.Monad.State (MonadState)
 import Data.Array
 import Data.Char (isDigit, ord)
@@ -11,6 +11,9 @@ import qualified Data.Map as Map
 import Data.Traversable (sequence)
 
 import Ersatz
+
+sizeLimit :: Int
+sizeLimit = 6
 
 main :: IO ()
 main = runSlitherlink sample
@@ -22,11 +25,11 @@ runSlitherlink p = do
   paintBoard p $ snd solution
   return ()
 
-paintBoard :: Problem -> Map Cell Bool -> IO ()
+paintBoard :: Problem -> Map Cell (Bool, (Integer, Integer)) -> IO ()
 paintBoard p cs = do
   forM_ (range (0,row-1)) $ \r -> do
     forM_ (range (0,col-1)) $ \c -> do
-      let Just b = Map.lookup (r,c) cs
+      let Just (b, _) = Map.lookup (r,c) cs
       putChar $ if b then 'X' else ' '
     putStrLn "+"
     where
@@ -276,13 +279,19 @@ type Line = (Point,Point)
 type Problem = [String]
 type Hint = [(Cell, Int)]
 
+existsPos :: (HasSAT s, MonadState s m) => m (Bits, Bits)
+existsPos = (,) <$> existsBits <*> existsBits
+  where
+    existsBits = liftM Bits $ replicateM sizeLimit exists
+      
 defineVariables :: (Variable a, HasSAT s, MonadState s m) =>
-  Problem -> m ((Map Line a), (Map Cell a))
+  Problem -> m ((Map Line a), (Map Cell (a, (Bits, Bits))))
 defineVariables p = do
   ls <- sequence $ Map.fromList [(line, exists) | line <- vLines ++ hLines]
-  cs <- sequence $ Map.fromList [(cell, exists) | cell <- range ((0,0),(row-1,col-1))]
+  cs <- sequence $ Map.fromList [(cell, exists') | cell <- range ((0,0),(row-1,col-1))]
   return (ls, cs)
   where
+    exists' = (,) <$> exists <*> existsPos
     (row, col) = (length p, maximum $ map length p)
     vLines   = [((r, c), (r+1, c)) | r <- [0..row-1], c <- [0..col]]
     hLines = [((r, c), (r, c+1)) | r <- [0..row], c <- [0..col-1]]
@@ -299,7 +308,7 @@ validWith :: Boolean a => Map Line a -> [(Cell, Int)] -> a
 validWith p hs = and $ map (validAssignment p) hs
 
 slitherlink :: (HasSAT s, MonadState s m) =>
-  Problem -> m ((Map Line Bit), (Map Cell Bit))
+  Problem -> m ((Map Line Bit), (Map Cell (Bit, (Bits, Bits))))
 slitherlink p = do
   (ls, cs) <- defineVariables p
   assert $ ls `validWith` (hints p)
@@ -308,7 +317,7 @@ slitherlink p = do
   assert $ singleIsland (ls, cs)
   return (ls, cs)
 
-singleIsland :: (Map Line Bit, Map Cell Bit) -> Bit
+singleIsland :: (Map Line Bit, Map Cell (Bit, (Bits, Bits))) -> Bit
 singleIsland (ls, cs) = cape === bayPlus1
   where
     count p base = sumBit (base:(map p $ Map.keys cs))
@@ -316,7 +325,7 @@ singleIsland (ls, cs) = cape === bayPlus1
     bayPlus1 = count (snd.isCapeBay) true
     isCapeBay c@(x, y) = (here && above && left, not here && below && right)
       where
-        Just here = Map.lookup c cs
+        Just (here, _) = Map.lookup c cs
         above = let Just b = Map.lookup ((x,y),(x,y+1)) ls in b
         left = let Just b = Map.lookup ((x,y),(x+1,y)) ls in b
         below = let Just b = Map.lookup ((x+1,y),(x+1,y+1)) ls in b
@@ -327,46 +336,7 @@ singleIsland (ls, cs) = cape === bayPlus1
 cs `divideBy` ls =  and $ map (`isIslandOrOcean` (ls, cs)) (Map.keys cs)
 
 -- isIslandOrOcean :: (Boolean a, Equatable a) => Cell -> (Map Line a, Map Cell a) -> Bit
-c@(x, y) `isIslandOrOcean` (ls, cs) = -- here === west `xor` left
-  (
-    (northOcean ==> not here) &&
-    (eastOcean ==> not here) &&
-    (southOcean ==> not here) &&
-    (westOcean ==> not here) &&
-    (landFromNorth ==> here) &&
-    (landFromEast ==> here) &&
-    (landFromSouth ==> here) &&
-    (landFromWest ==> here) &&
-    (northLand ==> here) &&
-    (eastLand ==> here) &&
-    (southLand ==> here) &&
-    (westLand ==> here) &&
-    ((not (northOcean || eastOcean || southOcean || westOcean ||
-           landFromNorth || landFromEast || landFromSouth || landFromWest ||
-           northLand || eastLand || southLand || westLand))
-      ==> (not (west `xor` left) === here))
-  )
-  where
-    northOcean = not north && not above
-    eastOcean = not east && not right
-    southOcean = not south && not below
-    westOcean = not west && not left
-    landFromNorth = not north && above
-    landFromEast = not east && right
-    landFromSouth = not south && below
-    landFromWest = not west && left
-    northLand = north && not above
-    eastLand = east && not right
-    southLand = south && not below
-    westLand = west && not left
-    Just here = Map.lookup c cs
-    safe = maybe false id
-    (north, west) = (safe *** safe) (Map.lookup (x-1,y) cs, Map.lookup (x,y-1) cs)
-    (south, east) = (safe *** safe) (Map.lookup (x+1,y) cs, Map.lookup (x,y+1) cs)
-    Just above = Map.lookup ((x,y), (x,y+1)) ls
-    Just right = Map.lookup ((x,y+1), (x+1,y+1)) ls
-    Just below = Map.lookup ((x+1,y), (x+1,y+1)) ls
-    Just left  = Map.lookup ((x,y), (x+1,y)) ls
+c@(x, y) `isIslandOrOcean` (ls, cs) = undefined -- here === west `xor` left
 
 validAssignment :: Boolean a => Map Line a -> ((Row, Col), Int) -> a
 validAssignment p ((x,y), n) = n `roundedBy` (a, b, c, d)
