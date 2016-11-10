@@ -331,10 +331,10 @@ singleIsland (ls, cs) = cape === bayPlus1
         right = let Just b = Map.lookup ((x,y+1),(x+1,y+1)) ls in b
         
 
-divideBy :: (Boolean a, Equatable a) => Map Cell (a, Bit4) -> Map Line Bit -> Bit
+divideBy :: Map Cell (Bit, Bit4) -> Map Line Bit -> Bit
 cs `divideBy` ls =  and $ map (`contour` (ls, cs)) (Map.keys cs)
 
-contour :: Cell -> (Map Line Bit, Map Cell (a, Bit4)) -> Bit
+contour :: Cell -> (Map Line Bit, Map Cell (Bit, Bit4)) -> Bit
 contour c@(x, y) (ls, cs) =
   (
     (not above ==> here === north) &&
@@ -345,12 +345,13 @@ contour c@(x, y) (ls, cs) =
     (right ==> here /== east) &&
     (below ==> here /== south) &&
     (left  ==> here /== west)
-  )
+  ) && onLand === (here >? seaLevel)
   where
     seaLevel :: Bit4
     seaLevel = encode 0
+    onLand :: Bit
     here :: Bit4
-    Just (_, here) = Map.lookup c cs
+    Just (onLand, here) = Map.lookup c cs
     (Just above, Just right) = (Map.lookup ((x,y),(x,y+1)) ls, Map.lookup ((x,y+1),(x+1,y+1)) ls)
     (Just left, Just below) = (Map.lookup ((x,y),(x+1,y)) ls, Map.lookup ((x+1,y),(x+1,y+1)) ls)
     safe :: Maybe (a, Bit4) -> Bit4
