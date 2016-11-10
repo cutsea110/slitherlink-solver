@@ -335,6 +335,20 @@ singleIsland (ls, cs) = cape === bayPlus1
 divideBy :: (Boolean a, Equatable a) => Map Cell (a, (Bits, Bits)) -> Map Line a -> Bit
 cs `divideBy` ls =  and $ map (`isIslandOrOcean` (ls, cs)) (Map.keys cs)
 
+contour ::  (Boolean a, Equatable a) => Cell -> Map Cell (a, (Bits, Bits)) -> Map Line a -> Bit
+contour c@(x, y) cs ls = undefined
+--  (not north ==> (here === north))
+  where
+    here :: (Bits, Bits)
+    Just (_, here) = Map.lookup c cs
+    (Just above, Just right) = (Map.lookup ((x,y),(x,y+1)) ls, Map.lookup ((x,y+1),(x+1,y+1)) ls)
+    (Just left, Just below) = (Map.lookup ((x,y),(x+1,y)) ls, Map.lookup ((x+1,y),(x+1,y+1)) ls)
+    safe :: Maybe (a, (Bits, Bits)) -> (Bits, Bits)
+    safe = maybe undefined snd
+    north, east, south, west :: (Bits, Bits)
+    (north, east) = (safe *** safe) (Map.lookup (x-1,y) cs, Map.lookup (x,y+1) cs)
+    (south, west) = (safe *** safe) (Map.lookup (x+1,y) cs, Map.lookup (x,y-1) cs)
+
 isIslandOrOcean :: (Boolean a, Equatable a) =>
   Cell -> (Map Line a, Map Cell (a, (Bits, Bits))) -> Bit
 c@(x, y) `isIslandOrOcean` (ls, cs) = undefined -- here === west `xor` left
