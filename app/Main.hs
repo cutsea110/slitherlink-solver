@@ -10,6 +10,7 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Traversable (sequence)
 import Data.Word (Word8)
+import Numeric (showHex)
 
 import Ersatz
 
@@ -35,7 +36,7 @@ paintBoard p cs = do
   forM_ (range (0,row-1)) $ \r -> do
     forM_ (range (0,col-1)) $ \c -> do
       let Just (_, lvl) = Map.lookup (r,c) cs
-      putStr $ show lvl
+      putStr $ showHex lvl ""
     putStrLn "+"
     where
       (row, col) = (length p, maximum $ map length p)
@@ -349,6 +350,8 @@ contour c@(x, y) (ls, cs) =
   where
     seaLevel :: Bit4
     seaLevel = encode 0
+    landLevel :: Bit4
+    landLevel = encode 1
     onLand :: Bit
     here :: Bit4
     Just (onLand, here) = Map.lookup c cs
